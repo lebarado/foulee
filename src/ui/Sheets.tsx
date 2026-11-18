@@ -12,6 +12,7 @@ import { SessionDetail } from './SessionDetail';
 import { closeSheet, sheet } from './state';
 import { sessionExercises } from './text';
 import { sportInfo } from '../domain/sports';
+import { formatClock } from '../domain/player';
 
 export function SheetHost() {
   const st = sheet.value;
@@ -21,8 +22,8 @@ export function SheetHost() {
   if (id && !s && st.type !== 'edit') return null;
   return (
     <Sheet key={`${st.type}-${id ?? ''}`}>
-      {st.type === 'runDone' && s && <RunDone s={s} />}
-      {st.type === 'strength' && s && <StrengthRun s={s} />}
+      {st.type === 'runDone' && s && <RunDone s={s} durationSec={st.durationSec} />}
+      {st.type === 'strength' && s && <StrengthRun s={s} durationSec={st.durationSec} initialSets={st.sets} atEnd={st.atEnd} />}
       {st.type === 'session' && s && <SessionDetail s={s} />}
       {st.type === 'edit' && <CardEditor id={st.id} date={st.date} />}
       {st.type === 'level' && <LevelSheet />}
@@ -88,10 +89,19 @@ const num = (v: string) => {
   return v.trim() && Number.isFinite(n) && n > 0 ? n : undefined;
 };
 
-function RunDone({ s }: { s: Session }) {
+function RunDone({ s, durationSec }: { s: Session; durationSec?: number }) {
   const [rpe, setRpe] = useState(s.log?.rpe ?? 4);
   const [more, setMore] = useState(false);
-  const [f, setF] = useState({ min: '', sec: '', km: '', avg: '', max: '', cad: '', notes: '' });
+  // Durée chronométrée par le mode en cours : pré-remplie, modifiable.
+  const [f, setF] = useState({
+    min: durationSec ? String(Math.floor(durationSec / 60)) : '',
+    sec: durationSec ? String(durationSec % 60) : '',
+    km: '',
+    avg: '',
+    max: '',
+    cad: '',
+    notes: '',
+  });
   const field = (k: keyof typeof f) => ({
     value: f[k],
     onInput: (e: Event) => setF({ ...f, [k]: (e.target as HTMLInputElement).value }),
@@ -119,6 +129,11 @@ function RunDone({ s }: { s: Session }) {
   return (
     <div class="stack">
       <h2 class="sheet__title">Bravo !</h2>
+      {durationSec ? (
+        <p class="muted">
+          <Timer size={15} /> Chrono : {formatClock(durationSec * 1000)}
+        </p>
+      ) : null}
       <p class="muted">Comment tu t’es senti ?</p>
       <RpePicker value={rpe} onChange={setRpe} />
 
@@ -173,12 +188,18 @@ function RunDone({ s }: { s: Session }) {
 
 /* ---------- Renfo guidé ---------- */
 
-function StrengthRun({ s }: { s: Session }) {
+function StrengthRun({ s, durationSec, initialSets, atEnd }: {
+  s: Session;
+  durationSec?: number;
+  initialSets?: Record<string, boolean[]>;
+  atEnd?: boolean;
+}) {
   const setsCount = s.plan.sets ?? 2;
   const list = sessionExercises(s);
-  const [idx, setIdx] = useState(0);
+  // Depuis le mode en cours : séries déjà cochées, on va directement à la fin.
+  const [idx, setIdx] = useState(atEnd ? list.length : 0);
   const [sets, setSets] = useState<Record<string, boolean[]>>(
-    () => s.log?.sets ?? Object.fromEntries(list.map((e) => [e.id, Array(setsCount).fill(false)])),
+    () => initialSets ?? s.log?.sets ?? Object.fromEntries(list.map((e) => [e.id, Array(setsCount).fill(false)])),
   );
   const [pain, setPain] = useState(0);
   const [rpe, setRpe] = useState(4);
@@ -189,7 +210,7 @@ function StrengthRun({ s }: { s: Session }) {
 
   const finish = () => {
     closeSheet();
-    void actions.markDone(s.id, { sets, pain, rpe });
+    void actions.markDone(s.id, { sets, pain, rpe, ...(durationSec ? { durationSec } : {}) });
   };
 
   return (
@@ -229,6 +250,11 @@ function StrengthRun({ s }: { s: Session }) {
       ) : (
         <>
           <h2 class="sheet__title">Dernière étape</h2>
+          {durationSec ? (
+            <p class="muted">
+              <Timer size={15} /> Chrono : {formatClock(durationSec * 1000)}
+            </p>
+          ) : null}
           <p class="muted">Douleur max ressentie</p>
           <div class="rpe">
             <div class="rpe__value">

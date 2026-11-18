@@ -5,6 +5,7 @@ import {
   HeartPulse,
   MessageCircle,
   Pencil,
+  Play,
   Repeat,
   Ruler,
   StickyNote,
@@ -27,6 +28,7 @@ import { isGuidedStrength, planText, sessionExercises } from './text';
 import { WorkoutView } from './Workout';
 import { formatMeters, workoutStats } from '../domain/workout';
 import { sportInfo } from '../domain/sports';
+import { player, playerActions } from './playerStore';
 
 function gcalLink(s: Session, detail: string): string {
   const d = s.date.replace(/-/g, '');
@@ -59,6 +61,30 @@ export function SessionDetail({ s }: { s: Session }) {
         </div>
       </div>
 
+      {canDo && (
+        <div class="stack stack--tight">
+          <button
+            class="btn btn--big"
+            onClick={() => {
+              closeSheet();
+              playerActions.start(s);
+            }}
+          >
+            <Play size={22} strokeWidth={2.6} /> {player.value?.sessionId === s.id ? 'Reprendre la séance' : 'Démarrer la séance'}
+          </button>
+          <button
+            class="btn btn--ghost"
+            onClick={() => {
+              closeSheet();
+              openDone(s);
+            }}
+          >
+            <Check size={20} strokeWidth={3} /> Déjà faite
+          </button>
+          <ShiftControl s={s} />
+        </div>
+      )}
+
       {done && <DoneBlock s={s} />}
 
       <section class="block">
@@ -83,20 +109,6 @@ export function SessionDetail({ s }: { s: Session }) {
         </section>
       )}
 
-      {canDo && (
-        <>
-          <button
-            class="btn btn--big"
-            onClick={() => {
-              closeSheet();
-              openDone(s);
-            }}
-          >
-            <Check size={22} strokeWidth={3} /> Fait
-          </button>
-          <ShiftControl s={s} />
-        </>
-      )}
 
       <div class="actions">
         {!done && (

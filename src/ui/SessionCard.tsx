@@ -1,4 +1,5 @@
-import { Brain, Check, ChevronRight, StickyNote } from 'lucide-preact';
+import { Brain, Check, ChevronRight, Play, StickyNote } from 'lucide-preact';
+import { player, playerActions } from './playerStore';
 import { cardState, shiftWarnings } from '../domain/cards';
 import { suggestNext } from '../domain/coach';
 import { diffDays } from '../domain/dates';
@@ -91,8 +92,8 @@ export function SessionCard({ s, coach, primary }: Props) {
       {active && (
         <>
           {primary && (
-            <button class="btn" onClick={() => openDone(s)}>
-              <Check size={20} strokeWidth={3} /> Fait
+            <button class="btn" onClick={() => playerActions.start(s)}>
+              <Play size={20} strokeWidth={2.6} /> {player.value?.sessionId === s.id ? 'Reprendre' : 'Démarrer'}
             </button>
           )}
           <ShiftControl s={s} />

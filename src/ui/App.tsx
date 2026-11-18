@@ -6,6 +6,7 @@ import { Planning } from './pages/Planning';
 import { Progress } from './pages/Progress';
 import { SettingsPage } from './pages/SettingsPage';
 import { Today } from './pages/Today';
+import { PlayerView } from './Player';
 import { SheetHost } from './Sheets';
 import { tab, type Tab } from './state';
 
@@ -52,6 +53,7 @@ export function App() {
           </button>
         ))}
       </nav>
+      <PlayerView />
       <SheetHost />
       <ToastView />
     </>

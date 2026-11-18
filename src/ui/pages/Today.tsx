@@ -11,6 +11,7 @@ import { cfgEff, level, sessions, settings, today, xpTotal } from '../../data/st
 import { KindIcon, QUEST_ICONS, type IconC } from '../icons';
 import { SessionCard } from '../SessionCard';
 import { openSheet } from '../state';
+import { player } from '../playerStore';
 
 const byDate = (a: { s: Session }, b: { s: Session }) => a.s.date.localeCompare(b.s.date) || a.s.kind.localeCompare(b.s.kind);
 
@@ -92,9 +93,11 @@ export function Today() {
         </Section>
       )}
 
-      <button class="fab" aria-label="Nouvelle carte" onClick={() => openSheet({ type: 'edit' })}>
-        <Plus size={30} strokeWidth={2.6} />
-      </button>
+      {!player.value && (
+        <button class="fab" aria-label="Nouvelle carte" onClick={() => openSheet({ type: 'edit' })}>
+          <Plus size={30} strokeWidth={2.6} />
+        </button>
+      )}
     </>
   );
 }
