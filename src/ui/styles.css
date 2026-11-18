@@ -23,11 +23,104 @@
 
   --radius: 22px;
   --nav-h: 68px;
+  --nav-bg: rgba(13, 14, 18, 0.88);
+  --stripe: #1b1c22;
+  --card-shadow: none;
+
+  /* Couleurs utilisées pour du texte : identiques en sombre, assombries en clair (contraste). */
+  --run-fg: var(--run);
+  --str-fg: var(--str);
+  --xp-fg: var(--xp);
+  --swim-fg: var(--swim);
+  --bike-fg: var(--bike);
+  --cali-fg: var(--cali);
+  --warn-fg: var(--warn);
+  --hot-fg: var(--hot);
+  --fire-fg: var(--fire);
   color-scheme: dark;
 }
 
-* {
+/* --accent change selon la carte (couleur du sport) : sa variante texte se calcule partout. */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+  --accent-fg: var(--accent);
+}
+
+/* ---------- Mode clair automatique (même couleurs, fond lumineux) ---------- */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface-2: #f1efea;
+    --surface-3: #e4e1da;
+    --line: #e4e1da;
+    --text: #1f1d1a;
+    --muted: #6b665e;
+    --faint: #9a958c;
+    --warn-soft: rgba(214, 140, 40, 0.12);
+    --nav-bg: rgba(245, 244, 240, 0.9);
+    --stripe: #eeebe4;
+    --card-shadow: 0 1px 2px rgba(31, 29, 26, 0.04), 0 6px 18px rgba(31, 29, 26, 0.06);
+
+    --run-fg: color-mix(in srgb, var(--run) 55%, #1f1d1a);
+    --str-fg: color-mix(in srgb, var(--str) 62%, #1f1d1a);
+    --xp-fg: color-mix(in srgb, var(--xp) 58%, #4a3000);
+    --swim-fg: color-mix(in srgb, var(--swim) 58%, #1f1d1a);
+    --bike-fg: color-mix(in srgb, var(--bike) 62%, #1f1d1a);
+    --cali-fg: color-mix(in srgb, var(--cali) 66%, #1f1d1a);
+    --warn-fg: #a15c07;
+    --hot-fg: #c0362c;
+    --fire-fg: #c2541a;
+    color-scheme: light;
+  }
+
+  *,
+  *::before,
+  *::after {
+    --accent-fg: color-mix(in srgb, var(--accent) 58%, #1f1d1a);
+  }
+
+  .card,
+  .quests,
+  .later,
+  .stat,
+  .records,
+  .badge,
+  .settings,
+  .month,
+  .chart,
+  .hbars,
+  .rest-card,
+  .day {
+    box-shadow: var(--card-shadow);
+    border-color: transparent;
+  }
+
+  .card--today,
+  .card--soon,
+  .card--overdue {
+    box-shadow: var(--card-shadow), 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .fab {
+    box-shadow: 0 6px 18px rgba(31, 29, 26, 0.18);
+  }
+
+  .toast {
+    box-shadow: 0 10px 30px rgba(31, 29, 26, 0.16);
+  }
+
+  .wstep__measure,
+  .erow__title small {
+    color: color-mix(in srgb, var(--k) 60%, #1f1d1a);
+  }
+
+  .ring__inner {
+    background: var(--bg);
+  }
 }
 
 html,
@@ -35,11 +128,38 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   font-size: 16px;
   line-height: 1.45;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Typographie : titres serrés, chiffres alignés. */
+h1,
+h2,
+h3 {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI', Roboto, sans-serif;
+}
+
+.stat strong,
+.ring__inner strong,
+.quest__xp,
+.kv strong,
+.wstep__measure,
+.rpe__num,
+.wk,
+.stepper__ctrl strong,
+.mini strong,
+.month__cell,
+.day__label b,
+.hbars b,
+.records b,
+.xp-lines b,
+.pill-stat {
+  font-variant-numeric: tabular-nums;
 }
 
 button,
@@ -90,9 +210,11 @@ button {
 }
 
 .page-title {
-  font-size: 28px;
-  margin: 8px 2px 16px;
-  letter-spacing: -0.02em;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 10px 2px 18px;
+  letter-spacing: -0.03em;
 }
 
 .section {
@@ -100,11 +222,12 @@ button {
 }
 
 .section__title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--muted);
-  margin: 0 2px 10px;
-  letter-spacing: 0.01em;
+  margin: 0 4px 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .row {
@@ -138,9 +261,11 @@ button {
 }
 
 .hero__title {
-  font-size: 26px;
-  margin: 2px 0 10px;
-  letter-spacing: -0.02em;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 2px 0 12px;
+  letter-spacing: -0.03em;
 }
 
 .hero__pills {
@@ -158,12 +283,12 @@ button {
 }
 
 .pill-stat--fire {
-  color: var(--fire);
+  color: var(--fire-fg);
   background: rgba(255, 138, 76, 0.14);
 }
 
 .pill-stat--xp {
-  color: var(--xp);
+  color: var(--xp-fg);
   background: var(--xp-soft);
 }
 
@@ -196,7 +321,7 @@ button {
 
 .ring__inner strong {
   font-size: 24px;
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 /* ---------- Bandeaux ---------- */
@@ -210,7 +335,7 @@ button {
 
 .banner--warn {
   background: var(--warn-soft);
-  color: var(--warn);
+  color: var(--warn-fg);
 }
 
 .hint {
@@ -220,7 +345,7 @@ button {
 }
 
 .hint--warn {
-  color: var(--warn);
+  color: var(--warn-fg);
 }
 
 .hint--calm {
@@ -248,14 +373,14 @@ button {
 }
 
 .card--today,
-.card--toConfirm,
+.card--soon,
 .card--overdue {
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
-.card--toConfirm {
-  animation: pop 0.25s ease-out, breathe 2.8s ease-in-out 0.3s infinite;
+.card--soon {
+  animation: pop 0.25s ease-out;
 }
 
 .card--confirmed {
@@ -295,7 +420,7 @@ button {
 
 .card__when {
   font-size: 13px;
-  color: var(--accent);
+  color: var(--accent-fg);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -304,15 +429,18 @@ button {
 }
 
 .card__title {
-  font-size: 19px;
-  margin: 1px 0 0;
-  letter-spacing: -0.01em;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.25;
+  margin: 2px 0 0;
+  letter-spacing: -0.015em;
 }
 
 .card__plan {
   margin: 12px 0 4px;
   color: var(--muted);
   font-size: 15px;
+  line-height: 1.4;
 }
 
 .card .btn {
@@ -331,7 +459,7 @@ button {
 
 .tag--ok {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .coach {
@@ -540,7 +668,7 @@ button {
 }
 
 .quest__xp {
-  color: var(--xp);
+  color: var(--xp-fg);
   font-weight: 700;
   font-size: 13px;
 }
@@ -607,7 +735,7 @@ button {
   justify-content: center;
   gap: 4px;
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-  background: rgba(13, 14, 18, 0.88);
+  background: var(--nav-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--line);
@@ -694,8 +822,10 @@ button {
 
 .sheet__title {
   font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
   margin: 4px 0 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 .sheet .card {
@@ -718,7 +848,7 @@ button {
 
 .rpe__num {
   font-size: 34px;
-  color: var(--xp);
+  color: var(--xp-fg);
   margin-right: 2px;
 }
 
@@ -807,7 +937,7 @@ a:focus-visible {
 .dose {
   font-size: 22px;
   font-weight: 700;
-  color: var(--str);
+  color: var(--str-fg);
   margin: 0;
 }
 
@@ -939,7 +1069,7 @@ a:focus-visible {
 }
 
 .day--heavy {
-  background: repeating-linear-gradient(-45deg, var(--surface), var(--surface) 10px, #1b1c22 10px, #1b1c22 20px);
+  background: repeating-linear-gradient(-45deg, var(--surface), var(--surface) 10px, var(--stripe) 10px, var(--stripe) 20px);
 }
 
 .day__label {
@@ -993,12 +1123,12 @@ a:focus-visible {
 
 .pill--run {
   background: var(--run-soft);
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .pill--strength {
   background: var(--str-soft);
-  color: var(--str);
+  color: var(--str-fg);
 }
 
 .pill--done.pill--run {
@@ -1064,7 +1194,7 @@ a:focus-visible {
 
 .month__cell--today {
   background: var(--xp-soft);
-  color: var(--xp);
+  color: var(--xp-fg);
   font-weight: 700;
 }
 
@@ -1160,7 +1290,7 @@ a:focus-visible {
 .lg--pending {
   background: transparent;
   border: 2px dashed var(--run);
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .lg--hot {
@@ -1414,7 +1544,7 @@ a:focus-visible {
 
 .toast strong {
   font-size: 20px;
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .toast span {
@@ -1560,7 +1690,7 @@ body.no-scroll {
 }
 
 .splash {
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .nav__item svg {
@@ -1568,7 +1698,7 @@ body.no-scroll {
 }
 
 .nav__item--on svg {
-  color: var(--run);
+  color: var(--run-fg);
   transform: translateY(-1px) scale(1.08);
 }
 
@@ -1579,7 +1709,7 @@ body.no-scroll {
 }
 
 .card__icon {
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .card__chev {
@@ -1594,7 +1724,7 @@ body.no-scroll {
 }
 
 .card__note svg {
-  color: var(--accent);
+  color: var(--accent-fg);
   align-self: flex-start;
   margin-top: 2px;
 }
@@ -1606,17 +1736,17 @@ body.no-scroll {
   display: grid;
   place-items: center;
   background: var(--surface-2);
-  color: var(--str);
+  color: var(--str-fg);
 }
 
 .quest__icon {
-  color: var(--xp);
+  color: var(--xp-fg);
   display: grid;
   place-items: center;
 }
 
 .quest--done .quest__icon {
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .later__item {
@@ -1624,11 +1754,11 @@ body.no-scroll {
 }
 
 .later__item--run svg {
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .later__item--strength svg {
-  color: var(--str);
+  color: var(--str-fg);
 }
 
 .btn--icon {
@@ -1680,7 +1810,7 @@ body.no-scroll {
 }
 
 .depot--on {
-  color: var(--warn);
+  color: var(--warn-fg);
 }
 
 .tile__icon {
@@ -1689,11 +1819,11 @@ body.no-scroll {
 }
 
 .tile--on.tile--run .tile__icon {
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .tile--on.tile--strength .tile__icon {
-  color: var(--str);
+  color: var(--str-fg);
 }
 
 .badge__icon {
@@ -1704,7 +1834,7 @@ body.no-scroll {
 }
 
 .badge--on .badge__icon {
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .rpe__value {
@@ -1719,7 +1849,7 @@ body.no-scroll {
   align-items: center;
   gap: 6px;
   margin-left: 12px;
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .rpe__label svg {
@@ -1772,7 +1902,7 @@ body.no-scroll {
 }
 
 .block__title svg {
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 .block__text {
@@ -1794,7 +1924,7 @@ body.no-scroll {
   padding: 6px 12px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-fg);
   font-weight: 600;
   font-size: 14px;
 }
@@ -1854,7 +1984,7 @@ body.no-scroll {
 }
 
 .tips svg {
-  color: var(--accent);
+  color: var(--accent-fg);
   margin-top: 2px;
 }
 
@@ -1864,7 +1994,7 @@ body.no-scroll {
   gap: 8px;
   margin: 0 0 10px;
   font-weight: 600;
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .kv {
@@ -1922,7 +2052,7 @@ body.no-scroll {
 }
 
 .xp-lines b {
-  color: var(--xp);
+  color: var(--xp-fg);
   white-space: nowrap;
 }
 
@@ -1948,7 +2078,7 @@ body.no-scroll {
 }
 
 .action--danger {
-  color: var(--hot);
+  color: var(--hot-fg);
 }
 
 /* Éditeur */
@@ -2152,7 +2282,7 @@ body.no-scroll {
 }
 
 .xp-text {
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .next-reward {
@@ -2167,7 +2297,7 @@ body.no-scroll {
 
 .next-reward__title {
   margin: 0;
-  color: var(--xp);
+  color: var(--xp-fg);
   font-weight: 700;
   font-size: 14px;
 }
@@ -2186,15 +2316,15 @@ body.no-scroll {
   place-items: center;
   flex-shrink: 0;
   background: var(--surface-3);
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .reward--theme .reward__icon {
-  color: var(--run);
+  color: var(--run-fg);
 }
 
 .reward--joker .reward__icon {
-  color: var(--str);
+  color: var(--str-fg);
 }
 
 .reward div {
@@ -2268,7 +2398,7 @@ body.no-scroll {
 .path__step--current .path__dot {
   background: var(--bg);
   border: 3px solid var(--xp);
-  color: var(--xp);
+  color: var(--xp-fg);
   box-shadow: 0 0 0 5px var(--xp-soft);
 }
 
@@ -2334,7 +2464,7 @@ body.no-scroll {
 .perso__lvl span {
   font-size: 13px;
   font-weight: 700;
-  color: var(--xp);
+  color: var(--xp-fg);
   min-width: 46px;
   text-align: center;
 }
@@ -2402,7 +2532,7 @@ body.no-scroll {
 }
 
 .why svg {
-  color: var(--xp);
+  color: var(--xp-fg);
 }
 
 .why strong {
@@ -2466,9 +2596,9 @@ body.no-scroll {
   --accent-soft: var(--str-soft);
 }
 
-.pill--swim { background: var(--swim-soft); color: var(--swim); }
-.pill--bike { background: var(--bike-soft); color: var(--bike); }
-.pill--cali { background: var(--cali-soft); color: var(--cali); }
+.pill--swim { background: var(--swim-soft); color: var(--swim-fg); }
+.pill--bike { background: var(--bike-soft); color: var(--bike-fg); }
+.pill--cali { background: var(--cali-soft); color: var(--cali-fg); }
 .pill--done.pill--swim { background: var(--swim); color: var(--swim-ink); }
 .pill--done.pill--bike { background: var(--bike); color: var(--bike-ink); }
 .pill--done.pill--cali { background: var(--cali); color: var(--cali-ink); }
@@ -2480,9 +2610,9 @@ body.no-scroll {
 .mdot--done.mdot--bike { background: var(--bike); }
 .mdot--done.mdot--cali { background: var(--cali); }
 
-.later__item--swim svg { color: var(--swim); }
-.later__item--bike svg { color: var(--bike); }
-.later__item--cali svg { color: var(--cali); }
+.later__item--swim svg { color: var(--swim-fg); }
+.later__item--bike svg { color: var(--bike-fg); }
+.later__item--cali svg { color: var(--cali-fg); }
 
 /* Choix du sport */
 
@@ -2515,7 +2645,7 @@ body.no-scroll {
 .sport--on {
   border-color: var(--accent);
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-fg);
 }
 
 /* Bibliothèque */
@@ -2568,9 +2698,9 @@ body.no-scroll {
   flex-shrink: 0;
 }
 
-.int--easy { background: rgba(94, 230, 168, 0.14); color: #5ee6a8; }
-.int--mid { background: var(--xp-soft); color: var(--xp); }
-.int--hard { background: rgba(255, 122, 122, 0.15); color: var(--hot); }
+.int--easy { background: var(--run-soft); color: var(--run-fg); }
+.int--mid { background: var(--xp-soft); color: var(--xp-fg); }
+.int--hard { background: rgba(255, 122, 122, 0.15); color: var(--hot-fg); }
 
 .chips--scroll {
   flex-wrap: nowrap;
@@ -2770,7 +2900,7 @@ body.no-scroll {
 }
 
 .erow__tools .danger {
-  color: var(--hot);
+  color: var(--hot-fg);
 }
 
 .erow__tools--inline {
@@ -2871,4 +3001,35 @@ body.no-scroll {
 .day--nodrop {
   border: 2px dashed var(--line);
   opacity: 0.6;
+}
+
+/* ---------- Rond « Fait » ---------- */
+
+.card__check {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  background: transparent;
+  color: transparent;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease-out, color 0.15s ease-out, transform 0.1s;
+}
+
+.card__check:hover {
+  color: var(--accent-fg);
+}
+
+.card__check:active {
+  transform: scale(0.92);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.card__check--done {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }

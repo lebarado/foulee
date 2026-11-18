@@ -31,7 +31,9 @@ export function Today() {
   const nextRun = items.find((x) => x.s.kind === 'run' && ['today', 'soon', 'upcoming', 'overdue'].includes(x.st));
   const week = weekStart(t);
   const lc = loadCheck(all, cfg, week);
-  const card = (s: Session) => <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} />;
+  // Gros bouton « Fait » réservé à la première séance du jour ; les autres ont le rond.
+  const primaryId = items.find((x) => x.st === 'today')?.s.id;
+  const card = (s: Session) => <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} primary={s.id === primaryId} />;
 
   return (
     <>

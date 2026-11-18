@@ -14,12 +14,14 @@ interface Props {
   s: Session;
   /** Afficher le conseil du coach (pour la prochaine sortie). */
   coach?: boolean;
+  /** Séance principale de l'écran : gros bouton « Fait » en plus du rond. */
+  primary?: boolean;
 }
 
 export const openDone = (s: Session) => openSheet({ type: isGuidedStrength(s) ? 'strength' : 'runDone', id: s.id });
 
 /** Carte compacte. Un toucher n'importe où (hors boutons) ouvre le détail. */
-export function SessionCard({ s, coach }: Props) {
+export function SessionCard({ s, coach, primary }: Props) {
   const t = today.value;
   const cfg = settings.value;
   const st = cardState(s, t, cfg);
@@ -47,9 +49,13 @@ export function SessionCard({ s, coach }: Props) {
           <h3 class="card__title">{s.title}</h3>
         </div>
         {st === 'done' ? (
-          <span class="tag tag--ok">
-            <Check size={14} /> Faite
+          <span class="card__check card__check--done" aria-label="Faite">
+            <Check size={20} strokeWidth={3} />
           </span>
+        ) : active ? (
+          <button class="card__check" aria-label={`Marquer « ${s.title} » comme faite`} onClick={() => openDone(s)}>
+            <Check size={20} strokeWidth={3} />
+          </button>
         ) : (
           <ChevronRight size={22} class="card__chev" aria-hidden="true" />
         )}
@@ -84,9 +90,11 @@ export function SessionCard({ s, coach }: Props) {
 
       {active && (
         <>
-          <button class="btn" onClick={() => openDone(s)}>
-            <Check size={20} strokeWidth={3} /> Fait
-          </button>
+          {primary && (
+            <button class="btn" onClick={() => openDone(s)}>
+              <Check size={20} strokeWidth={3} /> Fait
+            </button>
+          )}
           <ShiftControl s={s} />
         </>
       )}
