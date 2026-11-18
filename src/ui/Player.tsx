@@ -1,5 +1,7 @@
 import { ChevronDown, ChevronRight, Pause, Play, Undo2, X } from 'lucide-preact';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { useSwipeDown } from './useSwipeDown';
 import {
   formatClock,
   isLastStep,
@@ -84,7 +86,8 @@ export function PlayerView() {
   const timeUp = remaining !== null && remaining <= 0;
 
   return (
-    <div class={`player player--${session.kind}`} role="dialog" aria-modal="true" aria-label="Séance en cours">
+    <SwipeShell kind={session.kind}>
+      <div class="player__grab" aria-hidden="true" />
       <div class="player__top">
         <button class="player__icon" aria-label="Quitter la séance" onClick={() => setAsk('quit')}>
           <X size={22} />
@@ -164,6 +167,16 @@ export function PlayerView() {
           </>
         )}
       </div>
+    </SwipeShell>
+  );
+}
+
+/** Conteneur plein écran : glisser vers le bas réduit la séance (le chrono continue). */
+function SwipeShell({ kind, children }: { kind: string; children: ComponentChildren }) {
+  const ref = useSwipeDown<HTMLDivElement>(() => (playerMinimized.value = true));
+  return (
+    <div ref={ref} class={`player player--${kind}`} role="dialog" aria-modal="true" aria-label="Séance en cours">
+      {children}
     </div>
   );
 }

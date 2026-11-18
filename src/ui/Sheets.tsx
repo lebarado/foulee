@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Timer, TriangleAlert, X } from 'lucide-preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { useSwipeDown } from './useSwipeDown';
 import { exerciseDose } from '../domain/catalog';
 import { rpeLabel } from '../domain/format';
 import type { Session, SessionLog } from '../domain/types';
@@ -41,9 +42,11 @@ function Sheet({ children }: { children: ComponentChildren }) {
       document.body.classList.remove('no-scroll');
     };
   }, []);
+  const overlay = useRef<HTMLDivElement>(null);
+  const panel = useSwipeDown<HTMLDivElement>(closeSheet, overlay);
   return (
-    <div class="overlay" onClick={(e) => e.target === e.currentTarget && closeSheet()}>
-      <div class="sheet" role="dialog" aria-modal="true">
+    <div class="overlay" ref={overlay} onClick={(e) => e.target === e.currentTarget && closeSheet()}>
+      <div class="sheet" role="dialog" aria-modal="true" ref={panel}>
         <div class="sheet__handle" />
         <button class="sheet__close" aria-label="Fermer" onClick={closeSheet}>
           <X size={20} />
