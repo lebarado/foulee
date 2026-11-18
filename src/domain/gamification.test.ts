@@ -44,8 +44,8 @@ describe('déblocages de niveau', () => {
   });
 
   it('thèmes verrouillés selon le niveau, titres au-delà du niveau 10', () => {
-    expect(isThemeUnlocked('ocean', 1)).toBe(false);
-    expect(isThemeUnlocked('ocean', 2)).toBe(true);
+    expect(isThemeUnlocked('ardoise', 1)).toBe(false);
+    expect(isThemeUnlocked('ardoise', 2)).toBe(true);
     expect(levelTitle(1)).toBe('Redémarrage');
     expect(levelTitle(12)).toBe('Légende · 3');
   });

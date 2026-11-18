@@ -1,4 +1,4 @@
-import { Brain, Check, ChevronRight, StickyNote } from 'lucide-preact';
+import { Check, ChevronRight } from 'lucide-preact';
 import { cardState, shiftWarnings } from '../domain/cards';
 import { suggestNext } from '../domain/coach';
 import { diffDays } from '../domain/dates';
@@ -14,12 +14,14 @@ interface Props {
   s: Session;
   /** Afficher le conseil du coach (pour la prochaine sortie). */
   coach?: boolean;
+  /** Action principale de la vue : bouton « Fait » plein. */
+  primary?: boolean;
 }
 
 export const openDone = (s: Session) => openSheet({ type: isGuidedStrength(s) ? 'strength' : 'runDone', id: s.id });
 
-/** Carte compacte. Un toucher n'importe où (hors boutons) ouvre le détail. */
-export function SessionCard({ s, coach }: Props) {
+/** Séance en ligne de liste. Le rond = « Fait » ; un toucher ailleurs ouvre le détail. */
+export function SessionCard({ s, coach, primary }: Props) {
   const t = today.value;
   const cfg = settings.value;
   const st = cardState(s, t, cfg);
@@ -33,68 +35,64 @@ export function SessionCard({ s, coach }: Props) {
     openSheet({ type: 'session', id: s.id });
   };
 
+  const meta = [relLabel(s.date, t), st === 'done' ? logText(s).join(' · ') : planText(s, cfg)].filter(Boolean).join(' · ');
+
   return (
-    <article class={`card card--${s.kind} card--${st}`} onClick={open}>
-      <div class="card__head">
-        <div class="card__icon" aria-hidden="true">
-          <KindIcon kind={s.kind} />
+    <article class={`session session--${st}`} onClick={open}>
+      {active ? (
+        <button class="check" aria-label={`Marquer « ${s.title} » comme faite`} onClick={() => openDone(s)} />
+      ) : st === 'done' ? (
+        <span class="check check--done" aria-label="Faite">
+          <Check size={14} strokeWidth={3} />
+        </span>
+      ) : (
+        <span class={`check ${st === 'missed' ? 'check--off' : ''}`} aria-hidden="true" />
+      )}
+
+      <div class="session__body">
+        <div class="session__top">
+          <h3 class="session__title">{s.title}</h3>
+          <ChevronRight size={18} strokeWidth={1.75} class="row__chev" aria-hidden="true" />
         </div>
-        <div class="card__titles">
-          <div class="card__when">
-            {relLabel(s.date, t)}
-            {shift > 0 && <span class="tag">décalée +{shift} j</span>}
-          </div>
-          <h3 class="card__title">{s.title}</h3>
-        </div>
-        {st === 'done' ? (
-          <span class="tag tag--ok">
-            <Check size={14} /> Faite
+        <div class="session__meta">
+          <KindIcon kind={s.kind} size={14} />
+          <span>
+            {meta}
+            {shift > 0 && ` · décalée de ${shift} j`}
           </span>
-        ) : (
-          <ChevronRight size={22} class="card__chev" aria-hidden="true" />
+        </div>
+
+        {s.plan.notes && st !== 'done' && <p class="session__notes">{s.plan.notes}</p>}
+        {st === 'overdue' && <p class="note">Pas encore faite. Tu peux encore la décaler.</p>}
+        {st === 'missed' && <p class="note">Passée, sans pénalité.</p>}
+        {warnings.map((w) => (
+          <Warn key={w} text={w} />
+        ))}
+
+        {sug?.changed && (
+          <div class="coach">
+            <p class="coach__title">Conseil du coach</p>
+            {sug.reasons.map((r) => (
+              <p key={r}>{r}</p>
+            ))}
+            <button class="link" onClick={() => actions.applySuggestion(s.id, sug)}>
+              Appliquer
+            </button>
+          </div>
+        )}
+
+        {active && primary && (
+          <button class="btn btn--block session__primary" onClick={() => openDone(s)}>
+            Fait
+          </button>
+        )}
+        {active && <ShiftControl s={s} />}
+        {st === 'overdue' && (
+          <button class="link link--quiet" onClick={() => actions.skip(s.id)}>
+            Laisser tomber cette fois
+          </button>
         )}
       </div>
-
-      <p class="card__plan">{st === 'done' ? logText(s).join(' · ') || 'Bravo, c’est fait.' : planText(s, cfg)}</p>
-      {s.plan.notes && st !== 'done' && (
-        <p class="card__note">
-          <StickyNote size={15} /> {s.plan.notes}
-        </p>
-      )}
-
-      {st === 'overdue' && <p class="hint">Pas encore faite ? Tu peux encore la décaler, rien n’est perdu.</p>}
-      {st === 'missed' && <p class="hint hint--calm">Passée. Aucune pénalité, on continue.</p>}
-      {warnings.map((w) => (
-        <Warn key={w} text={w} />
-      ))}
-
-      {sug?.changed && (
-        <div class="coach">
-          <div class="coach__title">
-            <Brain size={16} /> Conseil du coach
-          </div>
-          {sug.reasons.map((r) => (
-            <p key={r}>{r}</p>
-          ))}
-          <button class="btn btn--small" onClick={() => actions.applySuggestion(s.id, sug)}>
-            Appliquer
-          </button>
-        </div>
-      )}
-
-      {active && (
-        <>
-          <button class="btn" onClick={() => openDone(s)}>
-            <Check size={20} strokeWidth={3} /> Fait
-          </button>
-          <ShiftControl s={s} />
-        </>
-      )}
-      {st === 'overdue' && (
-        <button class="link" onClick={() => actions.skip(s.id)}>
-          Laisser tomber cette fois
-        </button>
-      )}
     </article>
   );
 }

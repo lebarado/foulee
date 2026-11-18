@@ -1,4 +1,4 @@
-import { Check, ListOrdered, Minus, Plus, Undo2 } from 'lucide-preact';
+import { Check, Minus, Plus } from 'lucide-preact';
 import { useState } from 'preact/hooks';
 import { shiftWarnings } from '../domain/cards';
 import { EXERCISES } from '../domain/catalog';
@@ -29,14 +29,14 @@ export function Stepper({ label, value, onChange, step = 1, min = 0, max = 999, 
       <span class="stepper__label">{label}</span>
       <div class="stepper__ctrl">
         <button aria-label={`Moins ${label}`} onClick={() => set(value - step)}>
-          <Minus size={20} />
+          <Minus size={16} strokeWidth={1.75} />
         </button>
         <strong>
           {value}
           {unit && <small> {unit}</small>}
         </strong>
         <button aria-label={`Plus ${label}`} onClick={() => set(value + step)}>
-          <Plus size={20} />
+          <Plus size={16} strokeWidth={1.75} />
         </button>
       </div>
     </div>
@@ -74,9 +74,7 @@ const fromTemplate = (tpl: CardTemplate, date: ISODate, id: string): Session => 
   source: 'manuel',
 });
 
-const INTENSITY_CLASS = { facile: 'int--easy', modéré: 'int--mid', intense: 'int--hard' } as const;
-
-/** Création et modification d'une carte : sport, modèle de la bibliothèque, puis réglages au pouce. */
+/** Création et modification d'une séance : sport, modèle, puis réglages au pouce. */
 export function CardEditor({ id, date: initialDate }: { id?: string; date?: ISODate }) {
   const t = today.value;
   const cfg = settings.value;
@@ -129,7 +127,7 @@ export function CardEditor({ id, date: initialDate }: { id?: string; date?: ISOD
 
   return (
     <div class="stack">
-      <h2 class="sheet__title">{existing ? 'Modifier la carte' : 'Nouvelle carte'}</h2>
+      <h2 class="sheet__title">{existing ? 'Modifier la séance' : 'Nouvelle séance'}</h2>
 
       {!existing && (
         <>
@@ -139,25 +137,28 @@ export function CardEditor({ id, date: initialDate }: { id?: string; date?: ISOD
                 key={sp.id}
                 role="radio"
                 aria-checked={sp.id === s.kind}
-                class={`sport sport--${sp.id} ${sp.id === s.kind ? 'sport--on' : ''}`}
+                class={`sport ${sp.id === s.kind ? 'sport--on' : ''}`}
                 onClick={() => pickSport(sp.id)}
               >
-                <KindIcon kind={sp.id} size={22} />
+                <KindIcon kind={sp.id} size={20} />
                 <small>{sp.label}</small>
               </button>
             ))}
           </div>
 
           <div class="field">
-            <span>Séances types</span>
-            <div class="library">
+            <span>Modèle</span>
+            <div class="list">
               {libraryFor(s.kind).map((x) => (
-                <button key={x.id} class={`lib lib--${x.kind} ${x.id === tplId ? 'lib--on' : ''}`} onClick={() => pickTemplate(x)}>
-                  <span class="lib__text">
-                    <strong>{x.title}</strong>
-                    <small>{x.hint}</small>
+                <button key={x.id} class="row" onClick={() => pickTemplate(x)} aria-pressed={x.id === tplId}>
+                  <span class="row__main">
+                    <span class="row__title">{x.title}</span>
+                    <span class="row__meta" style={{ display: 'block' }}>
+                      {x.hint}
+                    </span>
                   </span>
-                  <span class={`int ${INTENSITY_CLASS[x.intensity]}`}>{x.intensity}</span>
+                  <span class={`lib__int ${x.intensity === 'intense' ? 'lib__int--intense' : ''}`}>{x.intensity}</span>
+                  <span style={{ width: '18px' }}>{x.id === tplId && <Check size={18} strokeWidth={2} class="lib__check" />}</span>
                 </button>
               ))}
             </div>
@@ -179,104 +180,112 @@ export function CardEditor({ id, date: initialDate }: { id?: string; date?: ISOD
             </button>
           ))}
         </div>
+        {warnings.map((w) => (
+          <Warn key={w} text={w} />
+        ))}
       </div>
-      {warnings.map((w) => (
-        <Warn key={w} text={w} />
-      ))}
 
-      <div class="panel">
-        {autoDuration ? (
-          <div class="stepper">
-            <span class="stepper__label">Durée</span>
-            <strong class="stepper__auto">{plan.durationMin} min · calculée</strong>
-          </div>
-        ) : (
-          <Stepper label={stats ? 'Durée estimée' : 'Durée'} value={plan.durationMin} step={5} min={5} max={300} unit="min" onChange={(n) => setPlan({ durationMin: n })} />
-        )}
-
-        {s.kind === 'run' && !plan.workout && (
-          <>
-            <Segmented
-              value={plan.runWalk ? 'rw' : 'cont'}
-              options={[
-                { id: 'cont', label: 'En continu' },
-                { id: 'rw', label: 'Course + marche' },
-              ]}
-              onChange={(v) => setPlan({ runWalk: v === 'rw' ? { ...cfg.coach.runWalk } : undefined })}
-            />
-            {plan.runWalk && (
-              <div class="row">
-                <Stepper label="Course" value={plan.runWalk.runMin} min={1} max={30} unit="min" onChange={(n) => setPlan({ runWalk: { ...plan.runWalk!, runMin: n } })} />
-                <Stepper label="Marche" value={plan.runWalk.walkMin} min={1} max={10} unit="min" onChange={(n) => setPlan({ runWalk: { ...plan.runWalk!, walkMin: n } })} />
-              </div>
-            )}
-          </>
-        )}
-        {s.kind === 'run' && (
-          <Stepper label="FC max visée" value={ceiling} min={110} max={190} unit="bpm" onChange={(n) => setPlan({ hrCeiling: n })} />
-        )}
-
-        {s.kind === 'strength' && !plan.workout && (
-          <>
-            <Segmented
-              value={String(plan.sets ?? 2) as '2' | '3'}
-              options={[
-                { id: '2', label: '2 séries' },
-                { id: '3', label: '3 séries' },
-              ]}
-              onChange={(v) => setPlan({ sets: Number(v) })}
-            />
-            <div class="field">
-              <span>Exercices</span>
-              <div class="checks">
-                {EXERCISES.map((e) => {
-                  const on = chosen.includes(e.id);
-                  return (
-                    <button
-                      key={e.id}
-                      class={`check ${on ? 'check--on' : ''}`}
-                      aria-pressed={on}
-                      onClick={() => setPlan({ exercises: on ? chosen.filter((x) => x !== e.id) : [...chosen, e.id] })}
-                    >
-                      <span class="check__box">{on && <Check size={16} strokeWidth={3} />}</span>
-                      {e.name}
-                    </button>
-                  );
-                })}
-              </div>
+      <div class="field">
+        <span>Réglages</span>
+        <div class="list">
+          {autoDuration ? (
+            <div class="stepper">
+              <span class="stepper__label">Durée</span>
+              <span class="stepper__auto">{plan.durationMin} min, calculée</span>
             </div>
-          </>
-        )}
+          ) : (
+            <Stepper label={stats ? 'Durée estimée' : 'Durée'} value={plan.durationMin} step={5} min={5} max={300} unit="min" onChange={(n) => setPlan({ durationMin: n })} />
+          )}
+
+          {s.kind === 'run' && !plan.workout && (
+            <div class="pad">
+              <Segmented
+                value={plan.runWalk ? 'rw' : 'cont'}
+                options={[
+                  { id: 'cont', label: 'En continu' },
+                  { id: 'rw', label: 'Course + marche' },
+                ]}
+                onChange={(v) => setPlan({ runWalk: v === 'rw' ? { ...cfg.coach.runWalk } : undefined })}
+              />
+            </div>
+          )}
+          {s.kind === 'run' && !plan.workout && plan.runWalk && (
+            <Stepper label="Course" value={plan.runWalk.runMin} min={1} max={30} unit="min" onChange={(n) => setPlan({ runWalk: { ...plan.runWalk!, runMin: n } })} />
+          )}
+          {s.kind === 'run' && !plan.workout && plan.runWalk && (
+            <Stepper label="Marche" value={plan.runWalk.walkMin} min={1} max={10} unit="min" onChange={(n) => setPlan({ runWalk: { ...plan.runWalk!, walkMin: n } })} />
+          )}
+          {s.kind === 'run' && (
+            <Stepper label="FC max visée" value={ceiling} min={110} max={190} unit="bpm" onChange={(n) => setPlan({ hrCeiling: n })} />
+          )}
+          {s.kind === 'strength' && !plan.workout && (
+            <div class="pad">
+              <Segmented
+                value={String(plan.sets ?? 2) as '2' | '3'}
+                options={[
+                  { id: '2', label: '2 séries' },
+                  { id: '3', label: '3 séries' },
+                ]}
+                onChange={(v) => setPlan({ sets: Number(v) })}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {plan.workout ? (
+      {s.kind === 'strength' && !plan.workout && (
         <div class="field">
-          <span>
-            Étapes · {stats?.steps ?? 0} au total{stats && stats.meters > 0 ? ` · ${stats.meters} m` : ''}
-          </span>
-          <WorkoutEditor items={plan.workout} sport={s.kind} onChange={setWorkout} />
-          <button class="link" onClick={() => setPlan({ workout: undefined })}>
-            <Undo2 size={16} /> Revenir à une séance simple
-          </button>
+          <span>Exercices</span>
+          <div class="list">
+            {EXERCISES.map((e) => {
+              const on = chosen.includes(e.id);
+              return (
+                <button
+                  key={e.id}
+                  class="check-row"
+                  aria-pressed={on}
+                  onClick={() => setPlan({ exercises: on ? chosen.filter((x) => x !== e.id) : [...chosen, e.id] })}
+                >
+                  <span class={`tick ${on ? 'tick--on' : ''}`}>{on && <Check size={14} strokeWidth={2.5} />}</span>
+                  {e.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <button class="btn btn--soft" onClick={() => setWorkout(defaultWorkout(plan.durationMin))}>
-          <ListOrdered size={18} /> Détailler : étapes, tours, repos
-        </button>
       )}
 
+      <div class="field">
+        <span>
+          Étapes
+          {stats ? ` · ${stats.steps}${stats.meters > 0 ? ` · ${stats.meters} m` : ''}` : ''}
+        </span>
+        {plan.workout ? (
+          <>
+            <WorkoutEditor items={plan.workout} sport={s.kind} onChange={setWorkout} />
+            <button class="link link--quiet" onClick={() => setPlan({ workout: undefined })}>
+              Revenir à une séance simple
+            </button>
+          </>
+        ) : (
+          <button class="link" onClick={() => setWorkout(defaultWorkout(plan.durationMin))}>
+            Détailler la séance : étapes, tours, repos
+          </button>
+        )}
+      </div>
+
       <label class="field">
-        <span>Consignes et détails</span>
+        <span>Consignes</span>
         <textarea
           rows={3}
-          placeholder="Parcours le long de la Moselle, bassin de 25 m, chaussures neuves…"
+          placeholder="Parcours le long de la Moselle, bassin de 25 m…"
           value={plan.notes ?? ''}
           onInput={(e) => setPlan({ notes: (e.target as HTMLTextAreaElement).value })}
         />
       </label>
 
-      <button class="btn btn--big" onClick={save} disabled={s.kind === 'strength' && !plan.workout && chosen.length === 0}>
-        {existing ? 'Enregistrer' : 'Créer la carte'}
+      <button class="btn btn--block" onClick={save} disabled={s.kind === 'strength' && !plan.workout && chosen.length === 0}>
+        {existing ? 'Enregistrer' : 'Créer la séance'}
       </button>
     </div>
   );

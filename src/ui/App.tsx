@@ -24,7 +24,7 @@ export function App() {
   if (!ready.value)
     return (
       <div class="splash">
-        <Footprints size={56} />
+        <Footprints size={32} strokeWidth={1.5} />
       </div>
     );
 
@@ -47,7 +47,7 @@ export function App() {
               window.scrollTo({ top: 0 });
             }}
           >
-            <I size={22} strokeWidth={tab.value === id ? 2.4 : 2} aria-hidden="true" />
+            <I size={22} strokeWidth={1.75} aria-hidden="true" />
             <span>{label}</span>
           </button>
         ))}
@@ -58,29 +58,12 @@ export function App() {
   );
 }
 
-const CONFETTI = ['#5ee6a8', '#b69cff', '#ffc24b', '#ff7aa8', '#6cc7ff'];
-
 function ToastView() {
   const t = toast.value;
   if (!t) return null;
   return (
     <div class="toast-wrap" key={t.id} aria-live="polite">
-      {t.party && (
-        <div class="confetti" aria-hidden="true">
-          {Array.from({ length: 24 }, (_, i) => (
-            <i
-              key={i}
-              style={{
-                left: `${(i * 41) % 100}%`,
-                background: CONFETTI[i % CONFETTI.length],
-                animationDelay: `${(i % 6) * 60}ms`,
-                transform: `rotate(${i * 37}deg)`,
-              }}
-            />
-          ))}
-        </div>
-      )}
-      <div class={`toast ${t.party ? 'toast--party' : ''}`}>
+      <div class="toast">
         <strong>{t.title}</strong>
         {t.sub && <span>{t.sub}</span>}
       </div>
