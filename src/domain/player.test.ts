@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EXERCISES } from './catalog';
 import {
-  REST_BETWEEN_SETS_SEC,
+  REST_BETWEEN_EXERCISES_SEC,
+  REST_BETWEEN_ROUNDS_SEC,
   buildSteps,
   completedSets,
   formatClock,
@@ -25,11 +26,20 @@ describe('buildSteps', () => {
     expect(steps.at(-1)?.kind).toBe('cooldown');
   });
 
-  it('renfo guidé : une étape par série, repos entre les séries, pas de repos final', () => {
+  it('renfo guidé en circuit : tous les exos au tour 1, puis tous au tour 2', () => {
     const steps = buildSteps(mk({ kind: 'strength', date: '2026-11-20', plan: { durationMin: 15, sets: 2, exercises: ['squat-chaise', 'pont-fessier'] } }));
-    expect(steps.map((s) => s.kind)).toEqual(['work', 'rest', 'work', 'rest', 'work', 'rest', 'work']);
-    expect(steps[0]).toMatchObject({ exerciseId: 'squat-chaise', set: 0, round: 1, rounds: 2 });
-    expect(steps[1].measure).toEqual({ type: 'time', sec: REST_BETWEEN_SETS_SEC });
+    const work = steps.filter((s) => s.kind === 'work');
+    expect(work.map((s) => `${s.exerciseId}#${s.round}`)).toEqual(['squat-chaise#1', 'pont-fessier#1', 'squat-chaise#2', 'pont-fessier#2']);
+    expect(steps[0]).toMatchObject({ exerciseId: 'squat-chaise', set: 0, round: 1, rounds: 2, exIndex: 1, exCount: 2 });
+    // transition courte dans un tour, vraie récup entre les tours, rien à la fin
+    expect(steps[1].measure).toEqual({ type: 'time', sec: REST_BETWEEN_EXERCISES_SEC });
+    expect(steps[3].measure).toEqual({ type: 'time', sec: REST_BETWEEN_ROUNDS_SEC });
+    expect(steps.at(-1)?.kind).toBe('work');
+  });
+
+  it('jamais deux fois le même exercice d’affilée', () => {
+    const work = buildSteps(mk({ kind: 'strength', date: '2026-11-20', plan: { durationMin: 15, sets: 3 } })).filter((s) => s.kind === 'work');
+    for (let i = 1; i < work.length; i++) expect(work[i].exerciseId).not.toBe(work[i - 1].exerciseId);
   });
 
   it('séance structurée : les répétitions sont déroulées', () => {

@@ -48,7 +48,7 @@ const stepTitle = (s: PlayerStep) => s.label || STEP_LABEL[s.kind];
 
 function stepSub(s: PlayerStep) {
   if (!s.round || !s.rounds) return '';
-  return s.exerciseId ? `Série ${s.round} sur ${s.rounds}` : `Tour ${s.round} sur ${s.rounds}`;
+  return s.exIndex && s.exCount ? `Tour ${s.round} sur ${s.rounds} · exercice ${s.exIndex} sur ${s.exCount}` : `Tour ${s.round} sur ${s.rounds}`;
 }
 
 /** Écran « séance en cours » : chrono, étape en grand, gros bouton suivant, annulation facile. */

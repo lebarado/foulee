@@ -20,9 +20,15 @@ export interface PlayerStep {
   /** Renfo guidé : exercice et numéro de série (0-based), pour cocher les séries. */
   exerciseId?: string;
   set?: number;
+  /** Renfo en circuit : position de l'exercice dans le tour (1-based). */
+  exIndex?: number;
+  exCount?: number;
 }
 
-export const REST_BETWEEN_SETS_SEC = 60;
+/** Courte pause pour changer d'exercice dans un tour. */
+export const REST_BETWEEN_EXERCISES_SEC = 20;
+/** Vraie récupération entre deux tours du circuit. */
+export const REST_BETWEEN_ROUNDS_SEC = 90;
 
 const T = (min: number): Measure => ({ type: 'time', sec: Math.round(min * 60) });
 
@@ -39,11 +45,13 @@ export function buildSteps(s: Session, exercises: Exercise[] = EXERCISES): Playe
     }));
 
   if (s.kind === 'strength') {
+    // En circuit : tous les exercices une fois (tour 1), puis tous une deuxième fois, etc.
+    // Jamais deux fois le même exercice d'affilée.
     const sets = s.plan.sets ?? 2;
     const list = s.plan.exercises ? exercises.filter((e) => s.plan.exercises!.includes(e.id)) : exercises;
     const out: PlayerStep[] = [];
-    list.forEach((e, ei) => {
-      for (let i = 0; i < sets; i++) {
+    for (let i = 0; i < sets; i++) {
+      list.forEach((e, ei) => {
         out.push({
           kind: 'work',
           label: e.name,
@@ -54,11 +62,19 @@ export function buildSteps(s: Session, exercises: Exercise[] = EXERCISES): Playe
           rounds: sets,
           exerciseId: e.id,
           set: i,
+          exIndex: ei + 1,
+          exCount: list.length,
         });
-        const last = ei === list.length - 1 && i === sets - 1;
-        if (!last) out.push({ kind: 'rest', label: 'Repos', measure: { type: 'time', sec: REST_BETWEEN_SETS_SEC } });
-      }
-    });
+        const lastOfRound = ei === list.length - 1;
+        const lastOfAll = lastOfRound && i === sets - 1;
+        if (lastOfAll) return;
+        out.push(
+          lastOfRound
+            ? { kind: 'rest', label: 'Repos entre les tours', measure: { type: 'time', sec: REST_BETWEEN_ROUNDS_SEC } }
+            : { kind: 'rest', label: 'Transition', measure: { type: 'time', sec: REST_BETWEEN_EXERCISES_SEC } },
+        );
+      });
+    }
     return out;
   }
 
