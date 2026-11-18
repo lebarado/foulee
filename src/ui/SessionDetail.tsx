@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Pencil,
   Repeat,
+  Ruler,
   StickyNote,
   Timer,
   Trash2,
@@ -22,7 +23,10 @@ import { KindIcon, RpeIcon } from './icons';
 import { openDone } from './SessionCard';
 import { ShiftControl } from './ShiftControl';
 import { closeSheet, openSheet } from './state';
-import { planText, sessionExercises } from './text';
+import { isGuidedStrength, planText, sessionExercises } from './text';
+import { WorkoutView } from './Workout';
+import { formatMeters, workoutStats } from '../domain/workout';
+import { sportInfo } from '../domain/sports';
 
 function gcalLink(s: Session, detail: string): string {
   const d = s.date.replace(/-/g, '');
@@ -59,7 +63,15 @@ export function SessionDetail({ s }: { s: Session }) {
 
       <section class="block">
         <h3 class="block__title">{done ? 'Le programme prévu' : 'Le programme'}</h3>
-        {s.kind === 'run' ? <RunProgram s={s} /> : <StrengthProgram s={s} />}
+        {s.plan.workout ? (
+          <StructuredProgram s={s} />
+        ) : s.kind === 'run' ? (
+          <RunProgram s={s} />
+        ) : isGuidedStrength(s) ? (
+          <StrengthProgram s={s} />
+        ) : (
+          <FreeProgram s={s} />
+        )}
       </section>
 
       {s.plan.notes && (
@@ -171,6 +183,52 @@ function RunProgram({ s }: { s: Session }) {
   );
 }
 
+const INTENSITY_LABEL = { facile: 'Facile', modéré: 'Modéré', intense: 'Intense' } as const;
+
+function StructuredProgram({ s }: { s: Session }) {
+  const cfg = settings.value;
+  const st = workoutStats(s.plan.workout!);
+  return (
+    <>
+      <div class="targets">
+        <span>
+          <Timer size={16} /> {st.partial ? '≈ ' : ''}
+          {s.plan.durationMin} min
+        </span>
+        {st.meters > 0 && (
+          <span>
+            <Ruler size={16} /> {formatMeters(st.meters)}
+          </span>
+        )}
+        {s.kind === 'run' && (
+          <span>
+            <HeartPulse size={16} /> FC &lt; {s.plan.hrCeiling ?? cfg.efHrCeiling}
+          </span>
+        )}
+        {s.plan.intensity && (
+          <span>
+            <Gauge size={16} /> {INTENSITY_LABEL[s.plan.intensity]}
+          </span>
+        )}
+      </div>
+      <WorkoutView items={s.plan.workout!} />
+    </>
+  );
+}
+
+function FreeProgram({ s }: { s: Session }) {
+  return (
+    <>
+      <div class="targets">
+        <span>
+          <Timer size={16} /> {s.plan.durationMin} min
+        </span>
+      </div>
+      <p class="block__text muted">Séance libre. Touche « Modifier » puis « Détailler » pour la construire étape par étape.</p>
+    </>
+  );
+}
+
 function StrengthProgram({ s }: { s: Session }) {
   const sets = s.plan.sets ?? 2;
   const list = sessionExercises(s);
@@ -203,10 +261,11 @@ function StrengthProgram({ s }: { s: Session }) {
 
 function DoneBlock({ s }: { s: Session }) {
   const l = s.log ?? {};
-  const pace = paceSecPerKm(l);
+  const pace = s.kind === 'run' ? paceSecPerKm(l) : undefined;
   const xp = sessionXpLines(s, settings.value);
   const cells: [string, string][] = [];
-  if (l.distanceKm) cells.push(['Distance', `${fmtNum(l.distanceKm, 2)} km`]);
+  if (l.distanceKm)
+    cells.push(['Distance', sportInfo(s.kind).distanceUnit === 'm' ? `${Math.round(l.distanceKm * 1000)} m` : `${fmtNum(l.distanceKm, 2)} km`]);
   if (l.durationSec) cells.push(['Durée', formatDuration(l.durationSec)]);
   if (pace) cells.push(['Allure', formatPace(pace)]);
   if (l.avgHr) cells.push(['FC moy', `${l.avgHr}`]);

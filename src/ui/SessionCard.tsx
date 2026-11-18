@@ -8,7 +8,7 @@ import { actions, sessions, settings, today, workDays } from '../data/store';
 import { KindIcon } from './icons';
 import { ShiftControl, Warn } from './ShiftControl';
 import { openSheet } from './state';
-import { logText, planText } from './text';
+import { isGuidedStrength, logText, planText } from './text';
 
 interface Props {
   s: Session;
@@ -16,7 +16,7 @@ interface Props {
   coach?: boolean;
 }
 
-export const openDone = (s: Session) => openSheet({ type: s.kind === 'run' ? 'runDone' : 'strength', id: s.id });
+export const openDone = (s: Session) => openSheet({ type: isGuidedStrength(s) ? 'strength' : 'runDone', id: s.id });
 
 /** Carte compacte. Un toucher n'importe où (hors boutons) ouvre le détail. */
 export function SessionCard({ s, coach }: Props) {
@@ -26,7 +26,7 @@ export function SessionCard({ s, coach }: Props) {
   const shift = diffDays(s.originalDate, s.date);
   const active = st === 'today' || st === 'soon' || st === 'overdue';
   const warnings = active ? shiftWarnings(s, s.date, sessions.value, workDays.value, t) : [];
-  const sug = coach && active && s.kind === 'run' ? suggestNext(s, sessions.value, cfg) : null;
+  const sug = coach && active && s.kind === 'run' && !s.plan.workout ? suggestNext(s, sessions.value, cfg) : null;
 
   const open = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, a, input, label')) return;

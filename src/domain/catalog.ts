@@ -1,4 +1,4 @@
-import type { CardTemplate, Exercise, Settings } from './types';
+﻿import type { Exercise, Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   schemaVersion: 1,
@@ -36,18 +36,6 @@ export const DEFAULT_SETTINGS: Settings = {
     { id: 'r10', level: 10, label: 'Une nouvelle paire de chaussures' },
   ],
 };
-
-export const TEMPLATES: CardTemplate[] = [
-  { id: 'run-easy', kind: 'run', title: 'Course tranquille', hint: '30 min en continu, tu peux parler', plan: { durationMin: 30 } },
-  {
-    id: 'run-walk',
-    kind: 'run',
-    title: 'Course / marche',
-    hint: '30 min, 4 min course / 1 min marche',
-    plan: { durationMin: 30, runWalk: { runMin: 4, walkMin: 1 } },
-  },
-  { id: 'strength', kind: 'strength', title: 'Renfo', hint: '15–20 min, 8 exercices', plan: { durationMin: 15, sets: 2 } },
-];
 
 export const EXERCISES: Exercise[] = [
   {

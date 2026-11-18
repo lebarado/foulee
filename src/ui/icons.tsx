@@ -1,6 +1,10 @@
 import {
   Angry,
   Award,
+  Bike,
+  PersonStanding,
+  Shuffle,
+  Waves,
   CalendarCheck,
   Dumbbell,
   Flame,
@@ -21,8 +25,18 @@ import type { Session } from '../domain/types';
 
 export type IconC = typeof Footprints;
 
-export const KindIcon = ({ kind, size = 24 }: { kind: Session['kind']; size?: number }) =>
-  kind === 'run' ? <Footprints size={size} /> : <Dumbbell size={size} />;
+export const KIND_ICONS: Record<Session['kind'], IconC> = {
+  run: Footprints,
+  strength: Dumbbell,
+  cali: PersonStanding,
+  swim: Waves,
+  bike: Bike,
+};
+
+export function KindIcon({ kind, size = 24 }: { kind: Session['kind']; size?: number }) {
+  const I = KIND_ICONS[kind] ?? Footprints;
+  return <I size={size} />;
+}
 
 export const QUEST_ICONS: Record<string, IconC> = {
   run: Footprints,
@@ -41,6 +55,7 @@ export const BADGE_ICONS: Record<string, IconC> = {
   'deux-mois': Zap,
   'dix-km': Medal,
   'cent-km': Mountain,
+  polyvalent: Shuffle,
 };
 
 export const badgeIcon = (id: string) => BADGE_ICONS[id] ?? Award;

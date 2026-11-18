@@ -1,5 +1,5 @@
 import { computed, effect, signal } from '@preact/signals';
-import { completeSession, moveSession } from '../domain/cards';
+import { completeSession, moveSession, shiftWarnings } from '../domain/cards';
 import { DEFAULT_SETTINGS } from '../domain/catalog';
 import type { Suggestion } from '../domain/coach';
 import { isISODate, toISO, type ISODate } from '../domain/dates';
@@ -127,6 +127,14 @@ export const actions = {
   move: async (id: string, date: ISODate) => {
     await update(id, (s) => moveSession(s, date));
     showToast({ title: `Décalée · ${relLabel(date, today.value)}`, sub: 'Aucun souci' });
+  },
+
+  /** Glisser-déposer sur le planning : on replanifie, la nouvelle date devient la référence. */
+  reschedule: async (id: string, date: ISODate) => {
+    await update(id, (s) => ({ ...s, date, originalDate: date }));
+    const s = sessions.value.find((x) => x.id === id);
+    const w = s ? shiftWarnings(s, date, sessions.value, workDays.value, today.value) : [];
+    showToast({ title: `Déplacée · ${relLabel(date, today.value)}`, sub: w[0] ?? 'C’est noté' });
   },
 
   markDone: (id: string, log: SessionLog) =>

@@ -11,6 +11,7 @@ import { LevelSheet } from './LevelSheet';
 import { SessionDetail } from './SessionDetail';
 import { closeSheet, sheet } from './state';
 import { sessionExercises } from './text';
+import { sportInfo } from '../domain/sports';
 
 export function SheetHost() {
   const st = sheet.value;
@@ -96,13 +97,15 @@ function RunDone({ s }: { s: Session }) {
     onInput: (e: Event) => setF({ ...f, [k]: (e.target as HTMLInputElement).value }),
   });
 
+  const unit = sportInfo(s.kind).distanceUnit;
   const save = () => {
     const min = num(f.min) ?? 0;
     const sec = num(f.sec) ?? 0;
+    const dist = num(f.km);
     const log: SessionLog = {
       rpe,
       durationSec: min * 60 + sec || undefined,
-      distanceKm: num(f.km),
+      distanceKm: dist !== undefined && unit === 'm' ? dist / 1000 : dist,
       avgHr: num(f.avg),
       maxHr: num(f.max),
       cadence: num(f.cad),
@@ -132,10 +135,12 @@ function RunDone({ s }: { s: Session }) {
               <input inputMode="numeric" placeholder="s" {...field('sec')} />
             </div>
           </label>
-          <label>
-            Distance (km)
-            <input inputMode="decimal" placeholder="3,4" {...field('km')} />
-          </label>
+          {unit && (
+            <label>
+              Distance ({unit})
+              <input inputMode="decimal" placeholder={unit === 'm' ? '1000' : '3,4'} {...field('km')} />
+            </label>
+          )}
           <div class="row">
             <label>
               FC moy
@@ -146,10 +151,12 @@ function RunDone({ s }: { s: Session }) {
               <input inputMode="numeric" placeholder="165" {...field('max')} />
             </label>
           </div>
-          <label>
-            Cadence (pas/min)
-            <input inputMode="numeric" placeholder="160" {...field('cad')} />
-          </label>
+          {(s.kind === 'run' || s.kind === 'bike') && (
+            <label>
+              Cadence ({s.kind === 'run' ? 'pas/min' : 'tr/min'})
+              <input inputMode="numeric" placeholder={s.kind === 'run' ? '160' : '85'} {...field('cad')} />
+            </label>
+          )}
           <label>
             Notes
             <textarea rows={2} placeholder="Jambes lourdes, belle lumière…" {...field('notes')} />

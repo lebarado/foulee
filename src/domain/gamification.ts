@@ -7,7 +7,15 @@ import type { Session, Settings } from './types';
  * Une carte décalée puis faite rapporte exactement autant qu'une carte faite à l'heure.
  * Une carte manquée rapporte 0 — on ne retire jamais de points.
  */
-export const XP = { run: 40, strength: 25, rpe: 5, details: 5, underCeiling: 15 } as const;
+export const XP = { run: 40, strength: 25, cali: 25, swim: 30, bike: 30, rpe: 5, details: 5, underCeiling: 15 } as const;
+
+const DONE_LABEL: Record<Session['kind'], string> = {
+  run: 'Sortie faite',
+  strength: 'Renfo fait',
+  cali: 'Calisthénie faite',
+  swim: 'Natation faite',
+  bike: 'Vélo fait',
+};
 
 export const hrCeilingOf = (s: Session, cfg: Pick<Settings, 'efHrCeiling'>) =>
   s.plan.hrCeiling ?? cfg.efHrCeiling;
@@ -23,9 +31,9 @@ export interface XpLine {
 /** Détail de l'XP d'une séance. */
 export function sessionXpLines(s: Session, cfg: Pick<Settings, 'efHrCeiling'>): XpLine[] {
   if (s.status !== 'done') return [];
-  const lines: XpLine[] = [{ label: s.kind === 'run' ? 'Sortie faite' : 'Renfo fait', xp: s.kind === 'run' ? XP.run : XP.strength }];
+  const lines: XpLine[] = [{ label: DONE_LABEL[s.kind], xp: XP[s.kind] }];
   if (s.log?.rpe != null) lines.push({ label: 'Ressenti noté', xp: XP.rpe });
-  if (s.kind === 'run' && s.log?.durationSec && s.log.distanceKm) lines.push({ label: 'Chiffres de la montre', xp: XP.details });
+  if (s.log?.durationSec && s.log.distanceKm) lines.push({ label: 'Chiffres de la montre', xp: XP.details });
   if (s.kind === 'run' && s.log?.avgHr != null && s.log.avgHr <= hrCeilingOf(s, cfg))
     lines.push({ label: 'FC sous le plafond', xp: XP.underCeiling });
   return lines;
@@ -135,7 +143,7 @@ export function weekQuests(
 ): Quest[] {
   const inWeek = sessions.filter((s) => s.status === 'done' && weekStart(s.date) === week);
   const runs = inWeek.filter((s) => s.kind === 'run');
-  const strength = inWeek.filter((s) => s.kind === 'strength').length;
+  const strength = inWeek.filter((s) => s.kind === 'strength' || s.kind === 'cali').length;
   const activeDays = new Set(inWeek.map((s) => s.date)).size;
   const withRpe = runs.filter((s) => s.log?.rpe != null).length;
 
@@ -151,7 +159,7 @@ export function weekQuests(
 
   return [
     q('runs', 'run', `${cfg.weeklyRunTarget} sorties dans la semaine`, runs.length, cfg.weeklyRunTarget, 100),
-    q('strength', 'strength', `${cfg.weeklyStrengthTarget} séances de renfo`, strength, cfg.weeklyStrengthTarget, 30),
+    q('strength', 'strength', `${cfg.weeklyStrengthTarget} séances de renfo ou calisthénie`, strength, cfg.weeklyStrengthTarget, 30),
     q('days', 'days', `Bouger ${ACTIVE_DAYS_GOAL} jours différents`, activeDays, ACTIVE_DAYS_GOAL, 30),
     q('rpe', 'rpe', 'Noter ton ressenti à chaque sortie', withRpe, Math.max(runs.length, 1), 20, runs.length > 0),
   ];
@@ -162,7 +170,7 @@ export function weekQuests(
 export interface XpEvent {
   date: ISODate;
   label: string;
-  kind: 'run' | 'strength' | 'quest';
+  kind: Session['kind'] | 'quest';
   xp: number;
 }
 
@@ -211,7 +219,8 @@ export function badges(sessions: Session[], cfg: Settings, today: ISODate): Badg
     b('patience', 'Patience', '10 sorties sous le plafond FC', easyRuns >= 10),
     b('deux-mois', 'Deux mois', '8 semaines tenues d’affilée', st.best >= 8),
     b('dix-km', '10 km', 'Une sortie de 10 km ou plus', runs.some((s) => (s.log?.distanceKm ?? 0) >= 10)),
-    b('cent-km', '100 km', '100 km cumulés', totalKm >= 100),
+    b('cent-km', '100 km', '100 km cumulés en course', totalKm >= 100),
+    b('polyvalent', 'Polyvalent', '3 sports différents pratiqués', new Set(sessions.filter((s) => s.status === 'done').map((s) => s.kind)).size >= 3),
   ];
 }
 

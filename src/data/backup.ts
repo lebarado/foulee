@@ -16,7 +16,7 @@ function isSession(v: unknown): v is Session {
   return (
     isObj(v) &&
     typeof v.id === 'string' &&
-    (v.kind === 'run' || v.kind === 'strength') &&
+    ['run', 'strength', 'cali', 'swim', 'bike'].includes(v.kind as string) &&
     isISODate(v.date) &&
     isISODate(v.originalDate) &&
     ['planned', 'confirmed', 'done', 'skipped'].includes(v.status as string) &&

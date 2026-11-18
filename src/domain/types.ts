@@ -1,6 +1,10 @@
 import type { ISODate } from './dates';
+import type { WorkoutItem } from './workout';
 
-export type SessionKind = 'run' | 'strength';
+/** run = course, strength = renfo coureur, cali = calisthénie, swim = natation, bike = vélo. */
+export type SessionKind = 'run' | 'strength' | 'cali' | 'swim' | 'bike';
+
+export type Intensity = 'facile' | 'modéré' | 'intense';
 
 /**
  * Statut stocké. Les états d'affichage (« bientôt », « à rattraper », « passée »)
@@ -25,6 +29,9 @@ export interface SessionPlan {
   exercises?: string[];
   /** Consignes libres écrites sur la carte. */
   notes?: string;
+  /** Séance détaillée étape par étape (tours, repos…). */
+  workout?: WorkoutItem[];
+  intensity?: Intensity;
 }
 
 export interface SessionLog {
@@ -109,6 +116,7 @@ export interface CardTemplate {
   kind: SessionKind;
   title: string;
   hint: string;
+  intensity: Intensity;
   plan: SessionPlan;
 }
 

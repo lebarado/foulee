@@ -1,7 +1,7 @@
-﻿import { CalendarDays, Check, ChevronLeft, ChevronRight, Package, Plus, ChartColumn } from 'lucide-preact';
-import { useState } from 'preact/hooks';
+﻿import { CalendarDays, ChartColumn, Check, ChevronLeft, ChevronRight, GripVertical, Package, Plus } from 'lucide-preact';
+import { useRef, useState } from 'preact/hooks';
 import { cardState } from '../../domain/cards';
-import { addDays, fromISO, toISO, weekStart } from '../../domain/dates';
+import { addDays, fromISO, toISO, weekStart, type ISODate } from '../../domain/dates';
 import { DOW_SHORT, MONTHS_LONG, shortLabel } from '../../domain/format';
 import { loadCheck } from '../../domain/load';
 import type { Session } from '../../domain/types';
@@ -10,8 +10,24 @@ import { KindIcon } from '../icons';
 import { openSheet } from '../state';
 import { Section } from './Today';
 
+interface Drag {
+  id: string;
+  title: string;
+  kind: Session['kind'];
+  x: number;
+  y: number;
+  over: ISODate | null;
+}
+
+/** Jour sous le doigt (lignes marquées data-day). */
+function dayAt(x: number, y: number): ISODate | null {
+  const el = document.elementFromPoint(x, y) as HTMLElement | null;
+  return (el?.closest('[data-day]') as HTMLElement | null)?.dataset.day ?? null;
+}
+
 export function Planning() {
   const [offset, setOffset] = useState(0);
+  const [drag, setDrag] = useState<Drag | null>(null);
   const t = today.value;
   const cfg = settings.value;
   const ws = addDays(weekStart(t), offset * 7);
@@ -22,6 +38,7 @@ export function Planning() {
   const runsDone = visible.filter((s) => s.kind === 'run' && s.status === 'done' && weekStart(s.date) === ws).length;
   const runsPlanned = visible.filter((s) => s.kind === 'run' && weekStart(s.date) === ws).length;
   const lc = loadCheck(sessions.value, cfg, ws);
+  const canDrop = (d: ISODate | null) => !!d && d >= t;
 
   return (
     <>
@@ -52,19 +69,24 @@ export function Planning() {
         </div>
       )}
 
-      <ul class="days">
+      <ul class={`days ${drag ? 'days--dragging' : ''}`}>
         {days.map((d) => {
           const items = byDay(d);
           const dt = fromISO(d);
+          const over = drag?.over === d;
           return (
-            <li key={d} class={`day ${d === t ? 'day--today' : ''} ${heavy.has(d) ? 'day--heavy' : ''}`}>
+            <li
+              key={d}
+              data-day={d}
+              class={`day ${d === t ? 'day--today' : ''} ${heavy.has(d) ? 'day--heavy' : ''} ${over ? (canDrop(d) ? 'day--drop' : 'day--nodrop') : ''}`}
+            >
               <div class="day__label">
                 <span>{DOW_SHORT[dt.getDay()]}</span>
                 <b>{dt.getDate()}</b>
               </div>
               <div class="day__items">
                 {items.map((s) => (
-                  <PillButton key={s.id} s={s} />
+                  <DraggablePill key={s.id} s={s} drag={drag} setDrag={setDrag} canDrop={canDrop} />
                 ))}
                 {!items.length &&
                   (d < t ? (
@@ -89,18 +111,75 @@ export function Planning() {
         })}
       </ul>
       <p class="help">
-        <Package size={14} /> Touche pour marquer une journée de dépôt éreintante : l’app te prévient si une sortie tombe la veille.
+        <GripVertical size={14} /> Fais glisser une carte sur un autre jour pour la déplacer. <Package size={14} /> marque une
+        journée de dépôt éreintante.
       </p>
+
+      {drag && (
+        <div class={`ghost pill pill--${drag.kind}`} style={{ left: `${drag.x}px`, top: `${drag.y}px` }} aria-hidden="true">
+          <KindIcon kind={drag.kind} size={15} /> {drag.title}
+        </div>
+      )}
 
       <MonthGrid anchor={ws} />
     </>
   );
 }
 
-function PillButton({ s }: { s: Session }) {
+/**
+ * Carte du planning : un toucher ouvre le détail, un glisser la déplace.
+ * Événements pointer (souris + tactile) : le drag démarre après 8 px de mouvement.
+ */
+function DraggablePill({ s, drag, setDrag, canDrop }: {
+  s: Session;
+  drag: Drag | null;
+  setDrag: (d: Drag | null) => void;
+  canDrop: (d: ISODate | null) => boolean;
+}) {
   const st = cardState(s, today.value, settings.value);
+  const start = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const draggable = s.status !== 'done';
+
+  const onPointerDown = (e: PointerEvent) => {
+    start.current = { x: e.clientX, y: e.clientY, moved: false };
+    if (!draggable) return;
+    e.preventDefault(); // pas de sélection de texte pendant le geste
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: PointerEvent) => {
+    const p = start.current;
+    if (!p || !draggable) return;
+    if (!p.moved && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 8) return;
+    p.moved = true;
+    setDrag({ id: s.id, title: s.title, kind: s.kind, x: e.clientX, y: e.clientY, over: dayAt(e.clientX, e.clientY) });
+  };
+  const onPointerUp = (e: PointerEvent) => {
+    const p = start.current;
+    start.current = null;
+    if (!p) return;
+    if (p.moved) {
+      const target = dayAt(e.clientX, e.clientY);
+      setDrag(null);
+      if (target && target !== s.date && canDrop(target)) void actions.reschedule(s.id, target);
+    } else openSheet({ type: 'session', id: s.id });
+  };
+  const onPointerCancel = () => {
+    start.current = null;
+    setDrag(null);
+  };
+
   return (
-    <button class={`pill pill--${s.kind} pill--${st}`} onClick={() => openSheet({ type: 'session', id: s.id })}>
+    <button
+      class={`pill pill--${s.kind} pill--${st} ${draggable ? 'pill--drag' : ''} ${drag?.id === s.id ? 'pill--lifted' : ''}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onClick={(e) => {
+        // Clavier (Entrée/Espace) : pas de pointeur, on ouvre le détail.
+        if ((e as MouseEvent).detail === 0) openSheet({ type: 'session', id: s.id });
+      }}
+    >
       <KindIcon kind={s.kind} size={15} /> {s.title}
       {st === 'done' && <Check size={15} strokeWidth={3} />}
     </button>
@@ -141,9 +220,7 @@ function MonthGrid({ anchor }: { anchor: string }) {
           ),
         )}
       </div>
-      <p class="help">
-        <i class="mdot mdot--run mdot--done" /> course faite · <i class="mdot mdot--run" /> prévue · <i class="mdot mdot--strength mdot--done" /> renfo
-      </p>
+      <p class="help">Point plein = séance faite, cercle = prévue. Une couleur par sport.</p>
     </Section>
   );
 }
