@@ -9,9 +9,8 @@ export type CardState =
   /** Date passée mais encore décalable (dans la limite des jours autorisés). */
   | 'overdue'
   | 'today'
-  /** Dans la fenêtre glissante, pas encore validée. */
-  | 'toConfirm'
-  | 'confirmed'
+  /** Dans la fenêtre glissante (les prochaines 48 h par défaut). */
+  | 'soon'
   | 'upcoming';
 
 type CardCfg = Pick<Settings, 'windowDays' | 'maxShiftDays'>;
@@ -22,7 +21,7 @@ export function cardState(s: Session, today: ISODate, cfg: CardCfg): CardState {
   const delta = diffDays(today, s.date);
   if (delta < 0) return diffDays(s.originalDate, today) <= cfg.maxShiftDays ? 'overdue' : 'missed';
   if (delta === 0) return 'today';
-  if (delta <= cfg.windowDays) return s.status === 'confirmed' ? 'confirmed' : 'toConfirm';
+  if (delta <= cfg.windowDays) return 'soon';
   return 'upcoming';
 }
 
@@ -61,7 +60,20 @@ export function shiftWarnings(
   return warnings;
 }
 
-/** Décaler, c'est choisir une date : la carte devient « calée ». */
-export function moveSession(s: Session, target: ISODate, nowIso: string): Session {
-  return { ...s, date: target, status: 'confirmed', confirmedAt: s.confirmedAt ?? nowIso };
+/** Décale la carte ; la date d'origine reste la référence pour la limite de décalage. */
+export function moveSession(s: Session, target: ISODate): Session {
+  return { ...s, date: target };
+}
+
+/** Marque la carte faite. Faite en avance ? Elle passe à aujourd'hui. */
+export function completeSession(s: Session, today: ISODate, nowIso: string): Session {
+  return { ...s, status: 'done', doneAt: nowIso, date: s.date > today ? today : s.date };
+}
+
+/** Découpe une sortie course/marche en blocs lisibles. */
+export function runBlocks(durationMin: number, runMin: number, walkMin: number) {
+  const cycle = runMin + walkMin;
+  const reps = Math.max(1, Math.floor(durationMin / cycle));
+  const rest = Math.max(0, durationMin - reps * cycle);
+  return { reps, rest };
 }

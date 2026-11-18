@@ -1,9 +1,11 @@
+import { Award, ChartColumn, Flame, Footprints, HeartPulse, History, Lock, Smile, Trophy } from 'lucide-preact';
 import { addDays, diffDays, monthKey, weekStart } from '../../domain/dates';
 import { fmtNum, formatPace, MONTHS_LONG, shortLabel } from '../../domain/format';
 import { badges, hrCeilingOf, records, streak, type WeekMark } from '../../domain/gamification';
 import { doneRunMinutesByWeek, loadCheck } from '../../domain/load';
 import { efficiency, paceSecPerKm } from '../../domain/metrics';
-import { sessions, settings, today } from '../../data/store';
+import { cfgEff, sessions, settings, today } from '../../data/store';
+import { badgeIcon } from '../icons';
 import { Section } from './Today';
 
 const MARK_LABEL: Record<WeekMark, string> = {
@@ -15,7 +17,7 @@ const MARK_LABEL: Record<WeekMark, string> = {
 
 export function Progress() {
   const t = today.value;
-  const cfg = settings.value;
+  const cfg = cfgEff.value;
   const all = sessions.value;
   const runs = all.filter((s) => s.kind === 'run' && s.status === 'done').sort((a, b) => a.date.localeCompare(b.date));
   const reprise = runs.filter((s) => s.date >= cfg.repriseStart);
@@ -34,7 +36,7 @@ export function Progress() {
         <Stat label="Meilleure série" value={`${st.best} sem.`} />
       </div>
 
-      <Section title="Régularité" emoji="🔥">
+      <Section title="Régularité" icon={Flame}>
         <div class="weeks">
           {st.marks.map((m) => (
             <div key={m.week} class={`wk wk--${m.mark}`} title={`${shortLabel(m.week)} · ${MARK_LABEL[m.mark]}`}>
@@ -52,7 +54,7 @@ export function Progress() {
       <EfficiencyChart />
       <RpeChart />
 
-      <Section title="Records" emoji="🏆">
+      <Section title="Records" icon={Trophy}>
         <ul class="records">
           <li>
             <span>Plus longue sortie</span>
@@ -77,21 +79,26 @@ export function Progress() {
         </ul>
       </Section>
 
-      <Section title="Badges" emoji="🎖️">
+      <Section title="Badges" icon={Award}>
         <div class="badges">
-          {badges(all, cfg, t).map((b) => (
+          {badges(all, cfg, t).map((b) => {
+            const I = b.unlocked ? badgeIcon(b.id) : Lock;
+            return (
             <div key={b.id} class={`badge ${b.unlocked ? 'badge--on' : ''}`} title={b.desc}>
-              <span class="badge__emoji">{b.unlocked ? b.emoji : '🔒'}</span>
+              <span class="badge__icon">
+                <I size={26} />
+              </span>
               <strong>{b.name}</strong>
               <small>{b.desc}</small>
             </div>
-          ))}
+            );
+          })}
         </div>
       </Section>
 
       <MonthlyHistory />
 
-      <Section title="Dernières sorties" emoji="👟">
+      <Section title="Dernières sorties" icon={Footprints}>
         <ul class="records">
           {runs
             .slice(-6)
@@ -146,7 +153,7 @@ function WeeklyVolume() {
   const y = (v: number) => H - PAD.b - (v / max) * (H - PAD.t - PAD.b);
 
   return (
-    <Section title="Volume hebdo (minutes de course)" emoji="📊">
+    <Section title="Volume hebdo (minutes de course)" icon={ChartColumn}>
       <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Minutes de course par semaine sur 8 semaines">
         <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} class="axis" />
         {weeks.map((w, i) => (
@@ -201,7 +208,7 @@ function EfficiencyChart() {
   const path = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.s.date)},${y(p.ef)}`).join(' ');
 
   return (
-    <Section title="Efficacité à l’effort" emoji="🫀">
+    <Section title="Efficacité à l’effort" icon={HeartPulse}>
       <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Évolution de l’efficacité : vitesse divisée par la fréquence cardiaque">
         <line x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b} y2={H - PAD.b} class="axis" />
         {pts.length > 1 && <path d={path} class="line" />}
@@ -236,7 +243,7 @@ function RpeChart() {
   const bw = (W - PAD.l - PAD.r) / 12;
   const y = (v: number) => H - PAD.b - (v / 10) * (H - PAD.t - PAD.b);
   return (
-    <Section title="Ressenti" emoji="🙂">
+    <Section title="Ressenti" icon={Smile}>
       <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Ressenti des 12 dernières séances">
         {[3, 7].map((v) => (
           <line key={v} x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} class="grid" />
@@ -270,7 +277,7 @@ function MonthlyHistory() {
   const rows = [...months.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8);
   const max = Math.max(...rows.map(([, v]) => v), 1);
   return (
-    <Section title="Volume mensuel (km)" emoji="🗂️">
+    <Section title="Volume mensuel (km)" icon={History}>
       <ul class="hbars">
         {rows.map(([m, km]) => (
           <li key={m}>

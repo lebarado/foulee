@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { XP, badges, levelInfo, sessionXp, streak, totalXp, weekQuests } from './gamification';
+import { XP, badges, levelInfo, sessionXp, streak, totalXp, weekQuests, xpEvents } from './gamification';
+import { bonusJokers, effectiveSettings, isThemeUnlocked, levelTitle } from './levels';
 import { cfg, mk } from './testing';
 
 const C = cfg({ repriseStart: '2026-11-02' }); // lundi
@@ -8,21 +9,19 @@ const doneRun = (date: string, extra = {}) =>
   mk({ date, status: 'done', log: { durationSec: 1800, distanceKm: 4, avgHr: 145, rpe: 3 }, ...extra });
 
 describe('sessionXp', () => {
-  it('additionne calage, séance, ressenti et FC sous le plafond', () => {
-    expect(sessionXp(doneRun('2026-11-04', { confirmedAt: 'x' }), C)).toBe(
-      XP.confirm + XP.run + XP.rpe + XP.underCeiling,
-    );
+  it('additionne séance, ressenti, chiffres et FC sous le plafond', () => {
+    expect(sessionXp(doneRun('2026-11-04'), C)).toBe(XP.run + XP.rpe + XP.details + XP.underCeiling);
   });
 
   it('une séance décalée rapporte autant qu’une séance à l’heure', () => {
-    const onTime = doneRun('2026-11-04', { confirmedAt: 'x' });
-    const shifted = doneRun('2026-11-06', { originalDate: '2026-11-04', confirmedAt: 'x' });
+    const onTime = doneRun('2026-11-04');
+    const shifted = doneRun('2026-11-06', { originalDate: '2026-11-04' });
     expect(sessionXp(shifted, C)).toBe(sessionXp(onTime, C));
   });
 
   it('une séance manquée vaut 0, jamais négatif', () => {
     expect(sessionXp(mk({ date: '2026-11-04' }), C)).toBe(0);
-    expect(sessionXp(mk({ date: '2026-11-04', status: 'skipped', confirmedAt: 'x' }), C)).toBe(0);
+    expect(sessionXp(mk({ date: '2026-11-04', status: 'skipped' }), C)).toBe(0);
   });
 });
 
@@ -33,6 +32,22 @@ describe('levelInfo', () => {
     expect(levelInfo(100).level).toBe(2);
     expect(levelInfo(300).level).toBe(3);
     expect(levelInfo(450)).toMatchObject({ level: 3, into: 150, span: 300, progress: 0.5 });
+  });
+});
+
+describe('déblocages de niveau', () => {
+  it('un joker de plus au niveau 4 puis au niveau 8', () => {
+    expect(bonusJokers(3)).toBe(0);
+    expect(bonusJokers(4)).toBe(1);
+    expect(bonusJokers(9)).toBe(2);
+    expect(effectiveSettings(C, 4).jokersPerMonth).toBe(C.jokersPerMonth + 1);
+  });
+
+  it('thèmes verrouillés selon le niveau, titres au-delà du niveau 10', () => {
+    expect(isThemeUnlocked('ocean', 1)).toBe(false);
+    expect(isThemeUnlocked('ocean', 2)).toBe(true);
+    expect(levelTitle(1)).toBe('Redémarrage');
+    expect(levelTitle(12)).toBe('Légende · 3');
   });
 });
 
@@ -55,26 +70,38 @@ describe('streak', () => {
     expect(st.best).toBe(2);
   });
 
+  it('avec le joker bonus du niveau 4, la 2e semaine à 2 sorties est aussi protégée', () => {
+    const s = [...week('2026-11-02', 3), ...week('2026-11-09', 2), ...week('2026-11-16', 2), ...week('2026-11-23', 3)];
+    const st = streak(s, effectiveSettings(C, 4), '2026-11-30');
+    expect(st.current).toBe(4);
+  });
+
   it('une semaine vide casse la série (sans retirer d’XP)', () => {
     const s = [...week('2026-11-02', 3), ...week('2026-11-16', 3)];
-    const st = streak(s, C, '2026-11-23');
-    expect(st.current).toBe(1);
+    expect(streak(s, C, '2026-11-23').current).toBe(1);
     const before = totalXp(s, C, '2026-11-23');
     expect(totalXp([...s, mk({ date: '2026-11-24' })], C, '2026-11-23')).toBe(before);
   });
 });
 
-describe('quêtes', () => {
+describe('quêtes et historique', () => {
   it('la quête 3 sorties rapporte 100 XP une fois remplie', () => {
     const s = [doneRun('2026-11-02'), doneRun('2026-11-04'), doneRun('2026-11-06')];
     const q = weekQuests(s, C, '2026-11-02');
     expect(q.find((x) => x.id === 'runs')).toMatchObject({ done: true, progress: 3, xp: 100 });
     expect(q.find((x) => x.id === 'rpe')?.done).toBe(true);
+    expect(q.find((x) => x.id === 'days')).toMatchObject({ done: false, progress: 3 });
   });
 
-  it('pas de quête « ressenti » validée sans sortie', () => {
-    const q = weekQuests([], C, '2026-11-02');
-    expect(q.every((x) => !x.done)).toBe(true);
+  it('pas de quête validée sans séance', () => {
+    expect(weekQuests([], C, '2026-11-02').every((x) => !x.done)).toBe(true);
+  });
+
+  it('le total XP est la somme de l’historique', () => {
+    const s = [doneRun('2026-11-02'), doneRun('2026-11-04'), doneRun('2026-11-06'), mk({ kind: 'strength', date: '2026-11-05', status: 'done' })];
+    const ev = xpEvents(s, C, '2026-11-10');
+    expect(ev.reduce((a, e) => a + e.xp, 0)).toBe(totalXp(s, C, '2026-11-10'));
+    expect(ev.some((e) => e.kind === 'quest' && e.xp === 100)).toBe(true);
   });
 });
 

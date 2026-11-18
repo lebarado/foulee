@@ -1,5 +1,7 @@
+import { CalendarDays, Footprints, Settings, TrendingUp, Zap } from 'lucide-preact';
 import { useEffect } from 'preact/hooks';
 import { init, ready, toast } from '../data/store';
+import type { IconC } from './icons';
 import { Planning } from './pages/Planning';
 import { Progress } from './pages/Progress';
 import { SettingsPage } from './pages/SettingsPage';
@@ -7,11 +9,11 @@ import { Today } from './pages/Today';
 import { SheetHost } from './Sheets';
 import { tab, type Tab } from './state';
 
-const TABS: { id: Tab; emoji: string; label: string }[] = [
-  { id: 'today', emoji: '⚡', label: 'Aujourd’hui' },
-  { id: 'plan', emoji: '🗓️', label: 'Planning' },
-  { id: 'progress', emoji: '📈', label: 'Progrès' },
-  { id: 'settings', emoji: '⚙️', label: 'Réglages' },
+const TABS: { id: Tab; icon: IconC; label: string }[] = [
+  { id: 'today', icon: Zap, label: 'Aujourd’hui' },
+  { id: 'plan', icon: CalendarDays, label: 'Planning' },
+  { id: 'progress', icon: TrendingUp, label: 'Progrès' },
+  { id: 'settings', icon: Settings, label: 'Réglages' },
 ];
 
 export function App() {
@@ -19,7 +21,12 @@ export function App() {
     void init();
   }, []);
 
-  if (!ready.value) return <div class="splash">🏃</div>;
+  if (!ready.value)
+    return (
+      <div class="splash">
+        <Footprints size={56} />
+      </div>
+    );
 
   return (
     <>
@@ -30,18 +37,18 @@ export function App() {
         {tab.value === 'settings' && <SettingsPage />}
       </main>
       <nav class="nav">
-        {TABS.map((t) => (
+        {TABS.map(({ id, icon: I, label }) => (
           <button
-            key={t.id}
-            class={`nav__item ${tab.value === t.id ? 'nav__item--on' : ''}`}
-            aria-current={tab.value === t.id ? 'page' : undefined}
+            key={id}
+            class={`nav__item ${tab.value === id ? 'nav__item--on' : ''}`}
+            aria-current={tab.value === id ? 'page' : undefined}
             onClick={() => {
-              tab.value = t.id;
+              tab.value = id;
               window.scrollTo({ top: 0 });
             }}
           >
-            <span class="nav__emoji" aria-hidden="true">{t.emoji}</span>
-            <span>{t.label}</span>
+            <I size={22} strokeWidth={tab.value === id ? 2.4 : 2} aria-hidden="true" />
+            <span>{label}</span>
           </button>
         ))}
       </nav>

@@ -7,7 +7,8 @@ export type SheetState =
   | { type: 'runDone'; id: string }
   | { type: 'strength'; id: string }
   | { type: 'session'; id: string }
-  | { type: 'new'; date?: string };
+  | { type: 'edit'; id?: string; date?: string }
+  | { type: 'level' };
 
 export const sheet = signal<SheetState | null>(null);
 

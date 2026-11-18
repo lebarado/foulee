@@ -3,10 +3,12 @@ import { fmtNum, formatDuration, formatPace } from '../domain/format';
 import { paceSecPerKm } from '../domain/metrics';
 import type { Session, Settings } from '../domain/types';
 
-export const kindEmoji = (s: Pick<Session, 'kind'>) => (s.kind === 'run' ? '🏃' : '💪');
+export const sessionExercises = (s: Session) =>
+  s.plan.exercises ? EXERCISES.filter((e) => s.plan.exercises!.includes(e.id)) : EXERCISES;
 
 export function planText(s: Session, cfg: Settings): string {
-  if (s.kind === 'strength') return `${s.plan.durationMin} min · ${s.plan.sets ?? 2} séries · ${EXERCISES.length} exos`;
+  if (s.kind === 'strength')
+    return `${s.plan.durationMin} min · ${s.plan.sets ?? 2} séries · ${sessionExercises(s).length} exercices`;
   const parts = [`${s.plan.durationMin} min`];
   parts.push(s.plan.runWalk ? `${s.plan.runWalk.runMin}′ course / ${s.plan.runWalk.walkMin}′ marche` : 'en continu');
   parts.push(`FC < ${s.plan.hrCeiling ?? cfg.efHrCeiling}`);

@@ -1,14 +1,16 @@
 import type { ComponentChildren } from 'preact';
+import { CalendarClock, ChartColumn, Clock, Flame, MapPin, Moon, Plus, RotateCcw, Shield, Star, Target } from 'lucide-preact';
 import { cardState, type CardState } from '../../domain/cards';
 import { weekStart } from '../../domain/dates';
 import { longLabel, relLabel } from '../../domain/format';
 import { streak, weekQuests } from '../../domain/gamification';
+import { levelTitle } from '../../domain/levels';
 import { loadCheck } from '../../domain/load';
 import type { Session } from '../../domain/types';
-import { level, sessions, settings, today, xpTotal } from '../../data/store';
+import { cfgEff, level, sessions, settings, today, xpTotal } from '../../data/store';
+import { KindIcon, QUEST_ICONS, type IconC } from '../icons';
 import { SessionCard } from '../SessionCard';
 import { openSheet } from '../state';
-import { kindEmoji } from '../text';
 
 const byDate = (a: { s: Session }, b: { s: Session }) => a.s.date.localeCompare(b.s.date) || a.s.kind.localeCompare(b.s.kind);
 
@@ -24,11 +26,12 @@ export function Today() {
 
   const overdue = pick('overdue');
   const todays = items.filter((x) => x.s.date === t && x.st !== 'missed');
-  const soon = pick('toConfirm', 'confirmed');
+  const soon = pick('soon');
   const later = pick('upcoming').slice(0, 5);
-  const nextRun = items.find((x) => x.s.kind === 'run' && ['today', 'toConfirm', 'confirmed', 'upcoming', 'overdue'].includes(x.st));
+  const nextRun = items.find((x) => x.s.kind === 'run' && ['today', 'soon', 'upcoming', 'overdue'].includes(x.st));
   const week = weekStart(t);
   const lc = loadCheck(all, cfg, week);
+  const card = (s: Session) => <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} />;
 
   return (
     <>
@@ -36,25 +39,25 @@ export function Today() {
 
       {lc?.over && (
         <div class="banner banner--warn">
-          📊 Cette semaine : {Math.round(lc.plannedMin)} min de course prévues, repère conseillé ≈ {Math.round(lc.allowedMin)} min
-          (+10 % max). Pense à raccourcir une sortie.
+          <ChartColumn size={18} /> Cette semaine : {Math.round(lc.plannedMin)} min de course prévues, repère conseillé ≈{' '}
+          {Math.round(lc.allowedMin)} min (+10 % max). Pense à raccourcir une sortie.
         </div>
       )}
 
       {overdue.length > 0 && (
-        <Section title="À rattraper" emoji="⏪">
-          {overdue.map(({ s }) => (
-            <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} />
-          ))}
+        <Section title="À rattraper" icon={RotateCcw}>
+          {overdue.map(({ s }) => card(s))}
         </Section>
       )}
 
-      <Section title="Aujourd’hui" emoji="📍">
+      <Section title="Aujourd’hui" icon={MapPin}>
         {todays.length ? (
-          todays.map(({ s }) => <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} />)
+          todays.map(({ s }) => card(s))
         ) : (
           <div class="rest-card">
-            <span class="rest-card__emoji">😌</span>
+            <span class="rest-card__icon">
+              <Moon size={26} />
+            </span>
             <div>
               <strong>Jour de repos</strong>
               <p class="muted">La récup fait partie de l’entraînement.</p>
@@ -64,22 +67,20 @@ export function Today() {
       </Section>
 
       {soon.length > 0 && (
-        <Section title="À caler · 48 h" emoji="👆">
-          {soon.map(({ s }) => (
-            <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} />
-          ))}
+        <Section title="Dans les 48 h" icon={Clock}>
+          {soon.map(({ s }) => card(s))}
         </Section>
       )}
 
       <Quests week={week} />
 
       {later.length > 0 && (
-        <Section title="Plus tard" emoji="🔭">
+        <Section title="Plus tard" icon={CalendarClock}>
           <ul class="later">
             {later.map(({ s }) => (
               <li key={s.id}>
-                <button class="later__item" onClick={() => openSheet({ type: 'session', id: s.id })}>
-                  <span aria-hidden="true">{kindEmoji(s)}</span>
+                <button class={`later__item later__item--${s.kind}`} onClick={() => openSheet({ type: 'session', id: s.id })}>
+                  <KindIcon kind={s.kind} size={20} />
                   <span class="later__title">{s.title}</span>
                   <span class="muted">{relLabel(s.date, t)}</span>
                 </button>
@@ -89,10 +90,9 @@ export function Today() {
         </Section>
       )}
 
-      <button class="fab" aria-label="Nouvelle carte" onClick={() => openSheet({ type: 'new' })}>
-        +
+      <button class="fab" aria-label="Nouvelle carte" onClick={() => openSheet({ type: 'edit' })}>
+        <Plus size={30} strokeWidth={2.6} />
       </button>
-      <p class="sr-only">XP total : {xpTotal.value}</p>
     </>
   );
 }
@@ -100,25 +100,38 @@ export function Today() {
 function Header() {
   const t = today.value;
   const lv = level.value;
-  const st = streak(sessions.value, settings.value, t);
+  const st = streak(sessions.value, cfgEff.value, t);
   const deg = Math.round(lv.progress * 360);
   return (
     <header class="hero">
       <div class="hero__text">
         <p class="muted">{longLabel(t)}</p>
-        <h1 class="hero__title">On garde le rythme</h1>
+        <h1 class="hero__title">{levelTitle(lv.level)}</h1>
         <div class="hero__pills">
-          <span class="pill-stat pill-stat--fire">🔥 {st.current} sem.</span>
-          <span class="pill-stat pill-stat--xp">⭐ {xpTotal.value} XP</span>
-          {st.jokersLeft > 0 && <span class="pill-stat">🃏 {st.jokersLeft} joker</span>}
+          <span class="pill-stat pill-stat--fire">
+            <Flame size={16} /> {st.current} sem.
+          </span>
+          <span class="pill-stat pill-stat--xp">
+            <Star size={16} /> {xpTotal.value} XP
+          </span>
+          {st.jokersLeft > 0 && (
+            <span class="pill-stat">
+              <Shield size={16} /> {st.jokersLeft} joker{st.jokersLeft > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </div>
-      <div class="ring" style={{ background: `conic-gradient(var(--xp) ${deg}deg, var(--surface-3) 0)` }}>
-        <div class="ring__inner">
+      <button
+        class="ring ring--btn"
+        aria-label={`Niveau ${lv.level}, voir le détail`}
+        style={{ background: `conic-gradient(var(--xp) ${deg}deg, var(--surface-3) 0)` }}
+        onClick={() => openSheet({ type: 'level' })}
+      >
+        <span class="ring__inner">
           <small>Niv.</small>
           <strong>{lv.level}</strong>
-        </div>
-      </div>
+        </span>
+      </button>
     </header>
   );
 }
@@ -126,32 +139,37 @@ function Header() {
 function Quests({ week }: { week: string }) {
   const qs = weekQuests(sessions.value, settings.value, week);
   return (
-    <Section title="Quêtes de la semaine" emoji="🎯">
+    <Section title="Quêtes de la semaine" icon={Target}>
       <div class="quests">
-        {qs.map((q) => (
-          <div key={q.id} class={`quest ${q.done ? 'quest--done' : ''}`}>
-            <span class="quest__emoji" aria-hidden="true">{q.done ? '✅' : q.emoji}</span>
-            <div class="quest__body">
-              <div class="quest__label">
-                <span>{q.label}</span>
-                <span class="quest__xp">+{q.xp}</span>
-              </div>
-              <div class="bar">
-                <div class="bar__fill" style={{ width: `${(q.progress / q.goal) * 100}%` }} />
+        {qs.map((q) => {
+          const I = QUEST_ICONS[q.icon] ?? Target;
+          return (
+            <div key={q.id} class={`quest ${q.done ? 'quest--done' : ''}`}>
+              <span class="quest__icon" aria-hidden="true">
+                <I size={20} />
+              </span>
+              <div class="quest__body">
+                <div class="quest__label">
+                  <span>{q.label}</span>
+                  <span class="quest__xp">+{q.xp}</span>
+                </div>
+                <div class="bar">
+                  <div class="bar__fill" style={{ width: `${(q.progress / q.goal) * 100}%` }} />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Section>
   );
 }
 
-export function Section({ title, emoji, children }: { title: string; emoji: string; children: ComponentChildren }) {
+export function Section({ title, icon: I, children }: { title: string; icon: IconC; children: ComponentChildren }) {
   return (
     <section class="section">
       <h2 class="section__title">
-        <span aria-hidden="true">{emoji}</span> {title}
+        <I size={17} aria-hidden="true" /> {title}
       </h2>
       {children}
     </section>

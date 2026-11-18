@@ -48,11 +48,11 @@ export function formatDuration(sec: number): string {
 }
 
 export function rpeLabel(n: number): string {
-  if (n <= 2) return 'Très facile 😌';
-  if (n <= 4) return 'Facile 🙂';
-  if (n <= 6) return 'Moyen 😐';
-  if (n <= 8) return 'Dur 😤';
-  return 'Très dur 🥵';
+  if (n <= 2) return 'Très facile';
+  if (n <= 4) return 'Facile';
+  if (n <= 6) return 'Moyen';
+  if (n <= 8) return 'Dur';
+  return 'Très dur';
 }
 
 export const fmtNum = (n: number, digits = 1) =>

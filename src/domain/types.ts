@@ -3,8 +3,9 @@ import type { ISODate } from './dates';
 export type SessionKind = 'run' | 'strength';
 
 /**
- * Statut stocké. Les états d'affichage (« à caler », « en retard », « passée »)
+ * Statut stocké. Les états d'affichage (« bientôt », « à rattraper », « passée »)
  * sont calculés à partir de la date du jour : voir `cardState`.
+ * `confirmed` est conservé pour compatibilité avec les anciennes sauvegardes.
  */
 export type SessionStatus = 'planned' | 'confirmed' | 'done' | 'skipped';
 
@@ -20,6 +21,10 @@ export interface SessionPlan {
   hrCeiling?: number;
   /** Nombre de séries (renfo). */
   sets?: number;
+  /** Renfo : exercices retenus (tous si absent). */
+  exercises?: string[];
+  /** Consignes libres écrites sur la carte. */
+  notes?: string;
 }
 
 export interface SessionLog {
@@ -87,6 +92,16 @@ export interface Settings {
   noIntensityUntil: ISODate;
   history: { month: string; km: number }[];
   coach: CoachParams;
+  /** Thème de couleur choisi (débloqué par les niveaux). */
+  theme: string;
+  /** Récompenses réelles que tu t'offres en atteignant un niveau. */
+  rewards: PersonalReward[];
+}
+
+export interface PersonalReward {
+  id: string;
+  level: number;
+  label: string;
 }
 
 export interface CardTemplate {

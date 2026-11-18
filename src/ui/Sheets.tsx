@@ -1,26 +1,30 @@
 import type { ComponentChildren } from 'preact';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Timer, TriangleAlert, X } from 'lucide-preact';
 import { useEffect, useState } from 'preact/hooks';
-import { shiftWarnings } from '../domain/cards';
-import { EXERCISES, TEMPLATES, exerciseDose } from '../domain/catalog';
-import { addDays, type ISODate } from '../domain/dates';
-import { relLabel, rpeLabel } from '../domain/format';
-import type { CardTemplate, Session, SessionLog } from '../domain/types';
-import { actions, sessions, settings, today, workDays } from '../data/store';
-import { SessionCard } from './SessionCard';
+import { exerciseDose } from '../domain/catalog';
+import { rpeLabel } from '../domain/format';
+import type { Session, SessionLog } from '../domain/types';
+import { actions, sessions } from '../data/store';
+import { CardEditor } from './CardEditor';
+import { RpeIcon } from './icons';
+import { LevelSheet } from './LevelSheet';
+import { SessionDetail } from './SessionDetail';
 import { closeSheet, sheet } from './state';
-import { planText } from './text';
+import { sessionExercises } from './text';
 
 export function SheetHost() {
   const st = sheet.value;
   if (!st) return null;
-  const s = 'id' in st ? sessions.value.find((x) => x.id === st.id) : undefined;
-  if ('id' in st && !s) return null;
+  const id = 'id' in st ? st.id : undefined;
+  const s = id ? sessions.value.find((x) => x.id === id) : undefined;
+  if (id && !s && st.type !== 'edit') return null;
   return (
-    <Sheet>
+    <Sheet key={`${st.type}-${id ?? ''}`}>
       {st.type === 'runDone' && s && <RunDone s={s} />}
       {st.type === 'strength' && s && <StrengthRun s={s} />}
       {st.type === 'session' && s && <SessionDetail s={s} />}
-      {st.type === 'new' && <NewCard initialDate={st.date} />}
+      {st.type === 'edit' && <CardEditor id={st.id} date={st.date} />}
+      {st.type === 'level' && <LevelSheet />}
     </Sheet>
   );
 }
@@ -29,14 +33,18 @@ function Sheet({ children }: { children: ComponentChildren }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSheet();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.body.classList.add('no-scroll');
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.classList.remove('no-scroll');
+    };
   }, []);
   return (
     <div class="overlay" onClick={(e) => e.target === e.currentTarget && closeSheet()}>
       <div class="sheet" role="dialog" aria-modal="true">
         <div class="sheet__handle" />
         <button class="sheet__close" aria-label="Fermer" onClick={closeSheet}>
-          ✕
+          <X size={20} />
         </button>
         {children}
       </div>
@@ -50,7 +58,10 @@ function RpePicker({ value, onChange }: { value: number; onChange: (n: number) =
   return (
     <div class="rpe">
       <div class="rpe__value">
-        <span class="rpe__num">{value}</span>/10 · {rpeLabel(value)}
+        <span class="rpe__num">{value}</span>/10
+        <span class="rpe__label">
+          <RpeIcon value={value} size={22} /> {rpeLabel(value)}
+        </span>
       </div>
       <input
         type="range"
@@ -104,13 +115,13 @@ function RunDone({ s }: { s: Session }) {
 
   return (
     <div class="stack">
-      <h2 class="sheet__title">Bravo ! 🎉</h2>
+      <h2 class="sheet__title">Bravo !</h2>
       <p class="muted">Comment tu t’es senti ?</p>
       <RpePicker value={rpe} onChange={setRpe} />
 
       {!more ? (
         <button class="link" onClick={() => setMore(true)}>
-          + Ajouter les chiffres de la montre (facultatif)
+          <ChevronDown size={16} /> Ajouter les chiffres de la montre (+5 XP)
         </button>
       ) : (
         <div class="form">
@@ -157,17 +168,17 @@ function RunDone({ s }: { s: Session }) {
 
 function StrengthRun({ s }: { s: Session }) {
   const setsCount = s.plan.sets ?? 2;
+  const list = sessionExercises(s);
   const [idx, setIdx] = useState(0);
   const [sets, setSets] = useState<Record<string, boolean[]>>(
-    () => s.log?.sets ?? Object.fromEntries(EXERCISES.map((e) => [e.id, Array(setsCount).fill(false)])),
+    () => s.log?.sets ?? Object.fromEntries(list.map((e) => [e.id, Array(setsCount).fill(false)])),
   );
   const [pain, setPain] = useState(0);
   const [rpe, setRpe] = useState(4);
-  const last = idx === EXERCISES.length;
-  const ex = EXERCISES[idx];
+  const last = idx === list.length;
+  const ex = list[idx];
 
-  const toggle = (id: string, i: number) =>
-    setSets({ ...sets, [id]: sets[id].map((v, j) => (j === i ? !v : v)) });
+  const toggle = (id: string, i: number) => setSets({ ...sets, [id]: sets[id].map((v, j) => (j === i ? !v : v)) });
 
   const finish = () => {
     closeSheet();
@@ -176,23 +187,24 @@ function StrengthRun({ s }: { s: Session }) {
 
   return (
     <div class="stack">
-      <div class="dots" aria-label={`Étape ${idx + 1} sur ${EXERCISES.length + 1}`}>
-        {[...EXERCISES, null].map((e, i) => (
-          <span
-            key={i}
-            class={`dot ${i === idx ? 'dot--on' : ''} ${e && sets[e.id].every(Boolean) ? 'dot--done' : ''}`}
-          />
+      <div class="dots" aria-label={`Étape ${idx + 1} sur ${list.length + 1}`}>
+        {[...list, null].map((e, i) => (
+          <span key={i} class={`dot ${i === idx ? 'dot--on' : ''} ${e && sets[e.id]?.every(Boolean) ? 'dot--done' : ''}`} />
         ))}
       </div>
 
       {!last && ex ? (
         <>
           <p class="muted">
-            Exercice {idx + 1}/{EXERCISES.length}
+            Exercice {idx + 1}/{list.length}
           </p>
           <h2 class="sheet__title">{ex.name}</h2>
           <p class="dose">{exerciseDose(ex, setsCount)}</p>
-          {ex.tempo && <p class="tempo">⏱ {ex.tempo}</p>}
+          {ex.tempo && (
+            <p class="tempo">
+              <Timer size={16} /> {ex.tempo}
+            </p>
+          )}
           <ul class="cues">
             {ex.cues.map((c) => (
               <li key={c}>{c}</li>
@@ -200,13 +212,8 @@ function StrengthRun({ s }: { s: Session }) {
           </ul>
           <div class="sets">
             {sets[ex.id].map((v, i) => (
-              <button
-                key={i}
-                class={`set ${v ? 'set--on' : ''}`}
-                aria-pressed={v}
-                onClick={() => toggle(ex.id, i)}
-              >
-                {v ? '✓' : `Série ${i + 1}`}
+              <button key={i} class={`set ${v ? 'set--on' : ''}`} aria-pressed={v} onClick={() => toggle(ex.id, i)}>
+                {v ? <Check size={30} strokeWidth={3} /> : `Série ${i + 1}`}
               </button>
             ))}
           </div>
@@ -214,7 +221,7 @@ function StrengthRun({ s }: { s: Session }) {
         </>
       ) : (
         <>
-          <h2 class="sheet__title">Dernière étape 💪</h2>
+          <h2 class="sheet__title">Dernière étape</h2>
           <p class="muted">Douleur max ressentie</p>
           <div class="rpe">
             <div class="rpe__value">
@@ -230,7 +237,11 @@ function StrengthRun({ s }: { s: Session }) {
               onInput={(e) => setPain(Number((e.target as HTMLInputElement).value))}
             />
           </div>
-          {pain > 3 && <p class="hint hint--warn">⚠️ Au-dessus de 3/10 : allège la prochaine fois. Si ça persiste, consulte.</p>}
+          {pain > 3 && (
+            <p class="hint hint--warn">
+              <TriangleAlert size={16} /> Au-dessus de 3/10 : allège la prochaine fois. Si ça persiste, consulte.
+            </p>
+          )}
           <p class="muted">Ressenti global</p>
           <RpePicker value={rpe} onChange={setRpe} />
         </>
@@ -238,8 +249,8 @@ function StrengthRun({ s }: { s: Session }) {
 
       <div class="row">
         {idx > 0 && (
-          <button class="btn btn--ghost" onClick={() => setIdx(idx - 1)}>
-            ←
+          <button class="btn btn--ghost btn--icon" aria-label="Exercice précédent" onClick={() => setIdx(idx - 1)}>
+            <ChevronLeft size={22} />
           </button>
         )}
         {last ? (
@@ -248,93 +259,10 @@ function StrengthRun({ s }: { s: Session }) {
           </button>
         ) : (
           <button class="btn btn--big" onClick={() => setIdx(idx + 1)}>
-            Suivant →
+            Suivant <ChevronRight size={20} />
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ---------- Détail d'une carte (depuis le planning) ---------- */
-
-function gcalLink(s: Session, detail: string): string {
-  const d = s.date.replace(/-/g, '');
-  const end = addDays(s.date, 1).replace(/-/g, '');
-  const p = new URLSearchParams({ action: 'TEMPLATE', text: `Foulée · ${s.title}`, dates: `${d}/${end}`, details: detail });
-  return `https://calendar.google.com/calendar/render?${p.toString()}`;
-}
-
-function SessionDetail({ s }: { s: Session }) {
-  const removable = s.status !== 'done';
-  return (
-    <div class="stack">
-      <SessionCard s={s} coach />
-      {s.log?.notes && <p class="muted">📝 {s.log.notes}</p>}
-      <div class="row">
-        <a class="btn btn--ghost" href={gcalLink(s, planText(s, settings.value))} target="_blank" rel="noopener">
-          📅 Google Agenda
-        </a>
-        {removable && (
-          <button
-            class="btn btn--ghost"
-            onClick={() => {
-              if (confirm('Supprimer cette carte ?')) {
-                closeSheet();
-                void actions.remove(s.id);
-              }
-            }}
-          >
-            🗑 Supprimer
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Nouvelle carte ---------- */
-
-function NewCard({ initialDate }: { initialDate?: ISODate }) {
-  const t = today.value;
-  const [tpl, setTpl] = useState<CardTemplate>(TEMPLATES[0]);
-  const [date, setDate] = useState<ISODate>(initialDate ?? addDays(t, 1));
-  const days = Array.from({ length: 8 }, (_, i) => addDays(t, i));
-  const draft: Session = { id: 'draft', kind: tpl.kind, title: tpl.title, date, originalDate: date, status: 'planned', plan: tpl.plan };
-  const warnings = shiftWarnings(draft, date, sessions.value, workDays.value, t);
-
-  return (
-    <div class="stack">
-      <h2 class="sheet__title">Nouvelle carte</h2>
-      <div class="tiles">
-        {TEMPLATES.map((x) => (
-          <button key={x.id} class={`tile tile--${x.kind} ${x.id === tpl.id ? 'tile--on' : ''}`} onClick={() => setTpl(x)}>
-            <span class="tile__emoji">{x.kind === 'run' ? '🏃' : '💪'}</span>
-            <strong>{x.title}</strong>
-            <small>{x.hint}</small>
-          </button>
-        ))}
-      </div>
-      <p class="muted">Quel jour ?</p>
-      <div class="chips chips--wrap">
-        {days.map((d) => (
-          <button key={d} class={`chip ${d === date ? 'chip--on' : ''}`} onClick={() => setDate(d)}>
-            {relLabel(d, t)}
-          </button>
-        ))}
-      </div>
-      {warnings.map((w) => (
-        <p class="hint hint--warn" key={w}>⚠️ {w}</p>
-      ))}
-      <button
-        class="btn btn--big"
-        onClick={() => {
-          closeSheet();
-          void actions.add(tpl, date);
-        }}
-      >
-        Créer la carte
-      </button>
     </div>
   );
 }

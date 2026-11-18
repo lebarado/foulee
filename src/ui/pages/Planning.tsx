@@ -1,12 +1,14 @@
-﻿import { useState } from 'preact/hooks';
+﻿import { CalendarDays, Check, ChevronLeft, ChevronRight, Package, Plus, ChartColumn } from 'lucide-preact';
+import { useState } from 'preact/hooks';
 import { cardState } from '../../domain/cards';
 import { addDays, fromISO, toISO, weekStart } from '../../domain/dates';
 import { DOW_SHORT, MONTHS_LONG, shortLabel } from '../../domain/format';
 import { loadCheck } from '../../domain/load';
 import type { Session } from '../../domain/types';
 import { actions, sessions, settings, today, workDays } from '../../data/store';
+import { KindIcon } from '../icons';
 import { openSheet } from '../state';
-import { kindEmoji } from '../text';
+import { Section } from './Today';
 
 export function Planning() {
   const [offset, setOffset] = useState(0);
@@ -27,16 +29,16 @@ export function Planning() {
 
       <div class="weeknav">
         <button class="icon-btn" aria-label="Semaine précédente" onClick={() => setOffset(offset - 1)}>
-          ‹
+          <ChevronLeft size={22} />
         </button>
         <div class="weeknav__label">
           <strong>Semaine du {shortLabel(ws)}</strong>
           <small>
-            🏃 {runsDone}/{cfg.weeklyRunTarget} faites · {runsPlanned} prévues
+            {runsDone}/{cfg.weeklyRunTarget} sorties faites · {runsPlanned} prévues
           </small>
         </div>
         <button class="icon-btn" aria-label="Semaine suivante" onClick={() => setOffset(offset + 1)}>
-          ›
+          <ChevronRight size={22} />
         </button>
       </div>
       {offset !== 0 && (
@@ -46,7 +48,7 @@ export function Planning() {
       )}
       {lc?.over && (
         <div class="banner banner--warn">
-          📊 {Math.round(lc.plannedMin)} min prévues pour un repère de {Math.round(lc.allowedMin)} min (+10 % max).
+          <ChartColumn size={18} /> {Math.round(lc.plannedMin)} min prévues pour un repère de {Math.round(lc.allowedMin)} min (+10 % max).
         </div>
       )}
 
@@ -64,11 +66,14 @@ export function Planning() {
                 {items.map((s) => (
                   <PillButton key={s.id} s={s} />
                 ))}
-                {!items.length && (
-                  <button class="day__add" onClick={() => openSheet({ type: 'new', date: d })} disabled={d < t}>
-                    {d < t ? 'Repos' : '+ carte'}
-                  </button>
-                )}
+                {!items.length &&
+                  (d < t ? (
+                    <span class="day__rest">Repos</span>
+                  ) : (
+                    <button class="day__add" onClick={() => openSheet({ type: 'edit', date: d })}>
+                      <Plus size={15} /> carte
+                    </button>
+                  ))}
               </div>
               <button
                 class={`depot ${heavy.has(d) ? 'depot--on' : ''}`}
@@ -77,13 +82,15 @@ export function Planning() {
                 title="Journée de dépôt lourde"
                 onClick={() => actions.toggleWorkDay(d)}
               >
-                📦
+                <Package size={20} />
               </button>
             </li>
           );
         })}
       </ul>
-      <p class="help">📦 Touche pour marquer une journée de dépôt éreintante : l’app te prévient si une sortie tombe la veille.</p>
+      <p class="help">
+        <Package size={14} /> Touche pour marquer une journée de dépôt éreintante : l’app te prévient si une sortie tombe la veille.
+      </p>
 
       <MonthGrid anchor={ws} />
     </>
@@ -94,9 +101,8 @@ function PillButton({ s }: { s: Session }) {
   const st = cardState(s, today.value, settings.value);
   return (
     <button class={`pill pill--${s.kind} pill--${st}`} onClick={() => openSheet({ type: 'session', id: s.id })}>
-      <span aria-hidden="true">{kindEmoji(s)}</span> {s.title}
-      {st === 'done' && ' ✓'}
-      {st === 'confirmed' && ' · calée'}
+      <KindIcon kind={s.kind} size={15} /> {s.title}
+      {st === 'done' && <Check size={15} strokeWidth={3} />}
     </button>
   );
 }
@@ -111,10 +117,7 @@ function MonthGrid({ anchor }: { anchor: string }) {
   const t = today.value;
 
   return (
-    <section class="section">
-      <h2 class="section__title">
-        📅 {MONTHS_LONG[a.getMonth()]} {a.getFullYear()}
-      </h2>
+    <Section title={`${MONTHS_LONG[a.getMonth()]} ${a.getFullYear()}`} icon={CalendarDays}>
       <div class="month">
         {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
           <span key={i} class="month__dow">
@@ -139,9 +142,8 @@ function MonthGrid({ anchor }: { anchor: string }) {
         )}
       </div>
       <p class="help">
-        <i class="mdot mdot--run mdot--done" /> course faite · <i class="mdot mdot--run" /> prévue ·{' '}
-        <i class="mdot mdot--strength mdot--done" /> renfo
+        <i class="mdot mdot--run mdot--done" /> course faite · <i class="mdot mdot--run" /> prévue · <i class="mdot mdot--strength mdot--done" /> renfo
       </p>
-    </section>
+    </Section>
   );
 }

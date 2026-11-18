@@ -1,12 +1,13 @@
-import { computed, signal } from '@preact/signals';
-import { moveSession } from '../domain/cards';
+import { computed, effect, signal } from '@preact/signals';
+import { completeSession, moveSession } from '../domain/cards';
 import { DEFAULT_SETTINGS } from '../domain/catalog';
+import type { Suggestion } from '../domain/coach';
 import { isISODate, toISO, type ISODate } from '../domain/dates';
 import { relLabel } from '../domain/format';
 import { levelInfo, totalXp } from '../domain/gamification';
-import type { Suggestion } from '../domain/coach';
+import { effectiveSettings, isThemeUnlocked, levelTitle, themeById, unlocksAt } from '../domain/levels';
 import { seedSessions } from '../domain/seed';
-import type { CardTemplate, Session, SessionLog, Settings, WorkDay } from '../domain/types';
+import type { Session, SessionLog, Settings, WorkDay } from '../domain/types';
 import { parseBackup, type Backup } from './backup';
 import { db } from './db';
 
@@ -26,6 +27,18 @@ export const ready = signal(false);
 
 export const xpTotal = computed(() => totalXp(sessions.value, settings.value, today.value));
 export const level = computed(() => levelInfo(xpTotal.value));
+/** Réglages + bonus débloqués par le niveau (jokers…). */
+export const cfgEff = computed(() => effectiveSettings(settings.value, level.value.level));
+
+/* Thème : la couleur « course » suit le thème choisi, s'il est débloqué. */
+effect(() => {
+  const id = isThemeUnlocked(settings.value.theme, level.value.level) ? settings.value.theme : 'menthe';
+  const t = themeById(id);
+  const root = document.documentElement.style;
+  root.setProperty('--run', t.color);
+  root.setProperty('--run-ink', t.ink);
+  root.setProperty('--run-soft', `${t.color}24`);
+});
 
 export interface Toast {
   id: number;
@@ -40,7 +53,7 @@ export function showToast(t: Omit<Toast, 'id'>) {
   toast.value = { ...t, id };
   setTimeout(() => {
     if (toast.value?.id === id) toast.value = null;
-  }, t.party ? 3200 : 2200);
+  }, t.party ? 3600 : 2200);
 }
 
 /* ---------- Chargement ---------- */
@@ -74,12 +87,12 @@ export async function init() {
 /* ---------- Écritures ---------- */
 
 const nowIso = () => new Date().toISOString();
-const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+export const newId = () =>
+  crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 async function put(s: Session) {
   await db.sessions.put(s);
-  const list = sessions.value.filter((x) => x.id !== s.id);
-  sessions.value = [...list, s];
+  sessions.value = [...sessions.value.filter((x) => x.id !== s.id), s];
 }
 
 async function update(id: string, fn: (s: Session) => Session) {
@@ -94,30 +107,31 @@ async function withXp(fn: () => Promise<void>, party = false): Promise<number> {
   await fn();
   const gained = xpTotal.value - before;
   if (gained > 0) {
-    const up = level.value.level > lvl;
-    showToast({
-      title: `+${gained} XP`,
-      sub: up ? `Niveau ${level.value.level} atteint 🎉` : party ? 'Bien joué !' : undefined,
-      party: party || up,
-    });
+    const now = level.value.level;
+    if (now > lvl) {
+      const unlocked = unlocksAt(now).map((u) => u.label);
+      const perso = settings.value.rewards.filter((r) => r.level === now).map((r) => r.label);
+      showToast({
+        title: `Niveau ${now} · ${levelTitle(now)}`,
+        sub: [`+${gained} XP`, ...unlocked, ...perso.map((p) => `Cadeau : ${p}`)].join(' · '),
+        party: true,
+      });
+    } else {
+      showToast({ title: `+${gained} XP`, sub: party ? 'Bien joué !' : undefined, party });
+    }
   }
   return gained;
 }
 
 export const actions = {
-  confirm: (id: string) =>
-    withXp(() => update(id, (s) => ({ ...s, status: 'confirmed', confirmedAt: s.confirmedAt ?? nowIso() }))),
-
-  unconfirm: (id: string) => update(id, (s) => ({ ...s, status: 'planned', confirmedAt: undefined })),
-
-  async move(id: string, date: ISODate) {
-    const gained = await withXp(() => update(id, (s) => moveSession(s, date, nowIso())));
-    if (gained === 0) showToast({ title: `Décalée · ${relLabel(date, today.value)}`, sub: 'Aucun souci 👍' });
+  move: async (id: string, date: ISODate) => {
+    await update(id, (s) => moveSession(s, date));
+    showToast({ title: `Décalée · ${relLabel(date, today.value)}`, sub: 'Aucun souci' });
   },
 
   markDone: (id: string, log: SessionLog) =>
     withXp(
-      () => update(id, (s) => ({ ...s, status: 'done', doneAt: nowIso(), log: { ...s.log, ...log } })),
+      () => update(id, (s) => ({ ...completeSession(s, today.value, nowIso()), log: { ...s.log, ...log } })),
       true,
     ),
 
@@ -128,17 +142,8 @@ export const actions = {
     sessions.value = sessions.value.filter((s) => s.id !== id);
   },
 
-  add: (tpl: CardTemplate, date: ISODate) =>
-    put({
-      id: newId(),
-      kind: tpl.kind,
-      title: tpl.title,
-      date,
-      originalDate: date,
-      status: 'planned',
-      plan: structuredClone(tpl.plan),
-      source: 'manuel',
-    }),
+  /** Crée ou met à jour une carte depuis l'éditeur. */
+  saveSession: (s: Session) => put(s),
 
   applySuggestion: (id: string, sug: Suggestion) =>
     update(id, (s) => ({ ...s, plan: { ...s.plan, durationMin: sug.durationMin, runWalk: sug.runWalk } })),

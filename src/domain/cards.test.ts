@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardState, moveSession, shiftTargets, shiftWarnings } from './cards';
+import { cardState, completeSession, moveSession, runBlocks, shiftTargets, shiftWarnings } from './cards';
 import { cfg, mk } from './testing';
 
 const C = cfg();
@@ -8,8 +8,8 @@ describe('cardState', () => {
   it('suit la fenêtre glissante de 48 h', () => {
     const s = mk({ date: '2026-11-20' }); // vendredi
     expect(cardState(s, '2026-11-15', C)).toBe('upcoming');
-    expect(cardState(s, '2026-11-18', C)).toBe('toConfirm');
-    expect(cardState({ ...s, status: 'confirmed' }, '2026-11-19', C)).toBe('confirmed');
+    expect(cardState(s, '2026-11-18', C)).toBe('soon');
+    expect(cardState(s, '2026-11-19', C)).toBe('soon');
     expect(cardState(s, '2026-11-20', C)).toBe('today');
   });
 
@@ -60,9 +60,22 @@ describe('shiftWarnings', () => {
   });
 });
 
-describe('moveSession', () => {
-  it('décaler = caler, sans toucher la date d’origine', () => {
-    const s = moveSession(mk({ date: '2026-11-19' }), '2026-11-20', 'now');
-    expect(s).toMatchObject({ date: '2026-11-20', originalDate: '2026-11-19', status: 'confirmed', confirmedAt: 'now' });
+describe('moveSession / completeSession', () => {
+  it('décaler garde la date d’origine', () => {
+    expect(moveSession(mk({ date: '2026-11-19' }), '2026-11-20')).toMatchObject({ date: '2026-11-20', originalDate: '2026-11-19' });
   });
+
+  it('une carte faite en avance passe à aujourd’hui', () => {
+    const s = completeSession(mk({ date: '2026-11-20' }), '2026-11-19', 'now');
+    expect(s).toMatchObject({ status: 'done', date: '2026-11-19', originalDate: '2026-11-20' });
+  });
+
+  it('une carte rattrapée garde sa date', () => {
+    expect(completeSession(mk({ date: '2026-11-18' }), '2026-11-19', 'now').date).toBe('2026-11-18');
+  });
+});
+
+describe('runBlocks', () => {
+  it('30 min en 4/1 → 6 blocs', () => expect(runBlocks(30, 4, 1)).toEqual({ reps: 6, rest: 0 }));
+  it('32 min en 4/1 → 6 blocs + 2 min', () => expect(runBlocks(32, 4, 1)).toEqual({ reps: 6, rest: 2 }));
 });

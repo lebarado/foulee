@@ -1,3 +1,4 @@
+﻿import { Brain, Database, Download, Footprints, Layers, TriangleAlert, Upload, Wrench } from 'lucide-preact';
 import { useState } from 'preact/hooks';
 import { toISO } from '../../domain/dates';
 import type { Settings } from '../../domain/types';
@@ -83,7 +84,7 @@ export function SettingsPage() {
     try {
       await actions.importData(await file.text());
       setErr(null);
-      showToast({ title: 'Sauvegarde restaurée', sub: 'Tout est revenu 👌' });
+      showToast({ title: 'Sauvegarde restaurée', sub: 'Tout est revenu' });
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Import impossible.');
     }
@@ -93,7 +94,7 @@ export function SettingsPage() {
     <>
       <h1 class="page-title">Réglages</h1>
 
-      <Section title="Mon entraînement" emoji="🏃">
+      <Section title="Mon entraînement" icon={Footprints}>
         <div class="settings">
           <Num label="Plafond FC en EF" path={['efHrCeiling']} hint="bpm · test de la parole : tu dois pouvoir parler" />
           <Num label="Sorties par semaine" path={['weeklyRunTarget']} min={1} max={7} />
@@ -102,14 +103,14 @@ export function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Cartes" emoji="🃏">
+      <Section title="Cartes" icon={Layers}>
         <div class="settings">
           <Num label="Fenêtre « à caler »" path={['windowDays']} min={1} max={7} hint="jours à l’avance" />
           <Num label="Décalage max" path={['maxShiftDays']} min={1} max={4} hint="jours après la date prévue" />
         </div>
       </Section>
 
-      <Section title="Règles du coach" emoji="🧠">
+      <Section title="Règles du coach" icon={Brain}>
         <div class="settings">
           <Num label="Hausse de volume max" path={['volume', 'maxIncrease']} pct hint="% par semaine" />
           <Num label="Hausse plancher" path={['volume', 'minIncreaseMin']} hint="min, pour les petits volumes" />
@@ -126,18 +127,18 @@ export function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Mes données" emoji="💾">
+      <Section title="Mes données" icon={Database}>
         <p class="help">Tout est stocké sur ce téléphone. Exporte régulièrement une sauvegarde.</p>
         <div class="row">
           <button class="btn btn--soft" onClick={exportFile}>
-            ⬇️ Exporter
+            <Download size={18} /> Exporter
           </button>
           <label class="btn btn--soft">
-            ⬆️ Importer
+            <Upload size={18} /> Importer
             <input type="file" accept="application/json,.json" class="sr-only" onChange={importFile} />
           </label>
         </div>
-        {err && <p class="hint hint--warn">⚠️ {err}</p>}
+        {err && <p class="hint hint--warn"><TriangleAlert size={16} /> {err}</p>}
         <button
           class="link"
           onClick={() => {
@@ -148,7 +149,7 @@ export function SettingsPage() {
         </button>
       </Section>
 
-      <Section title="Bientôt" emoji="🛠️">
+      <Section title="Bientôt" icon={Wrench}>
         <ul class="cues">
           <li>Import Garmin (CSV puis FIT)</li>
           <li>Rappels : export .ics avec alarmes (en attendant, bouton Google Agenda sur chaque carte du planning)</li>
