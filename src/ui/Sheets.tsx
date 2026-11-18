@@ -1,16 +1,17 @@
 import type { ComponentChildren } from 'preact';
-import { Check, ChevronLeft, TriangleAlert, X } from 'lucide-preact';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Timer, TriangleAlert, X } from 'lucide-preact';
 import { useEffect, useState } from 'preact/hooks';
 import { exerciseDose } from '../domain/catalog';
 import { rpeLabel } from '../domain/format';
-import { sportInfo } from '../domain/sports';
 import type { Session, SessionLog } from '../domain/types';
 import { actions, sessions } from '../data/store';
 import { CardEditor } from './CardEditor';
+import { RpeIcon } from './icons';
 import { LevelSheet } from './LevelSheet';
 import { SessionDetail } from './SessionDetail';
 import { closeSheet, sheet } from './state';
 import { sessionExercises } from './text';
+import { sportInfo } from '../domain/sports';
 
 export function SheetHost() {
   const st = sheet.value;
@@ -43,8 +44,8 @@ function Sheet({ children }: { children: ComponentChildren }) {
     <div class="overlay" onClick={(e) => e.target === e.currentTarget && closeSheet()}>
       <div class="sheet" role="dialog" aria-modal="true">
         <div class="sheet__handle" />
-        <button class="icon-btn sheet__close" aria-label="Fermer" onClick={closeSheet}>
-          <X size={20} strokeWidth={1.75} />
+        <button class="sheet__close" aria-label="Fermer" onClick={closeSheet}>
+          <X size={20} />
         </button>
         {children}
       </div>
@@ -52,46 +53,35 @@ function Sheet({ children }: { children: ComponentChildren }) {
   );
 }
 
-/* ---------- Échelles 0–10 ---------- */
+/* ---------- Ressenti ---------- */
 
-function Scale({ label, value, min, max, onChange, describe, ends }: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (n: number) => void;
-  describe?: (n: number) => string;
-  ends?: [string, string];
-}) {
+function RpePicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
-    <div class="field">
-      <span>{label}</span>
-      <div class="list scale">
-        <div class="scale__value">
-          <strong>{value}</strong>
-          <span>sur 10{describe ? ` · ${describe(value)}` : ''}</span>
-        </div>
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={1}
-          value={value}
-          aria-label={label}
-          onInput={(e) => onChange(Number((e.target as HTMLInputElement).value))}
-        />
-        {ends && (
-          <div class="scale__ends">
-            <span>{ends[0]}</span>
-            <span>{ends[1]}</span>
-          </div>
-        )}
+    <div class="rpe">
+      <div class="rpe__value">
+        <span class="rpe__num">{value}</span>/10
+        <span class="rpe__label">
+          <RpeIcon value={value} size={22} /> {rpeLabel(value)}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={1}
+        max={10}
+        step={1}
+        value={value}
+        aria-label="Ressenti sur 10"
+        onInput={(e) => onChange(Number((e.target as HTMLInputElement).value))}
+      />
+      <div class="rpe__scale">
+        <span>Facile</span>
+        <span>Très dur</span>
       </div>
     </div>
   );
 }
 
-/* ---------- Séance faite ---------- */
+/* ---------- Sortie faite ---------- */
 
 const num = (v: string) => {
   const n = Number(v.replace(',', '.'));
@@ -128,60 +118,54 @@ function RunDone({ s }: { s: Session }) {
 
   return (
     <div class="stack">
-      <div>
-        <h2 class="sheet__title">{s.title}</h2>
-        <p class="detail__summary">Comment ça s’est passé ?</p>
-      </div>
-
-      <Scale label="Ressenti" value={rpe} min={1} max={10} onChange={setRpe} describe={rpeLabel} ends={['Facile', 'Très dur']} />
+      <h2 class="sheet__title">Bravo !</h2>
+      <p class="muted">Comment tu t’es senti ?</p>
+      <RpePicker value={rpe} onChange={setRpe} />
 
       {!more ? (
         <button class="link" onClick={() => setMore(true)}>
-          Ajouter les chiffres de la montre
+          <ChevronDown size={16} /> Ajouter les chiffres de la montre (+5 XP)
         </button>
       ) : (
-        <>
-          <div class="grid-2">
-            <label class="field">
-              <span>Minutes</span>
-              <input inputMode="numeric" placeholder="26" {...field('min')} />
-            </label>
-            <label class="field">
-              <span>Secondes</span>
-              <input inputMode="numeric" placeholder="36" {...field('sec')} />
-            </label>
-          </div>
+        <div class="form">
+          <label>
+            Durée
+            <div class="row">
+              <input inputMode="numeric" placeholder="min" {...field('min')} />
+              <input inputMode="numeric" placeholder="s" {...field('sec')} />
+            </div>
+          </label>
           {unit && (
-            <label class="field">
-              <span>Distance ({unit})</span>
+            <label>
+              Distance ({unit})
               <input inputMode="decimal" placeholder={unit === 'm' ? '1000' : '3,4'} {...field('km')} />
             </label>
           )}
-          <div class="grid-2">
-            <label class="field">
-              <span>FC moyenne</span>
+          <div class="row">
+            <label>
+              FC moy
               <input inputMode="numeric" placeholder="145" {...field('avg')} />
             </label>
-            <label class="field">
-              <span>FC max</span>
+            <label>
+              FC max
               <input inputMode="numeric" placeholder="165" {...field('max')} />
             </label>
           </div>
           {(s.kind === 'run' || s.kind === 'bike') && (
-            <label class="field">
-              <span>Cadence ({s.kind === 'run' ? 'pas/min' : 'tr/min'})</span>
+            <label>
+              Cadence ({s.kind === 'run' ? 'pas/min' : 'tr/min'})
               <input inputMode="numeric" placeholder={s.kind === 'run' ? '160' : '85'} {...field('cad')} />
             </label>
           )}
-          <label class="field">
-            <span>Notes</span>
-            <textarea rows={2} placeholder="Jambes lourdes, vent de face…" {...field('notes')} />
+          <label>
+            Notes
+            <textarea rows={2} placeholder="Jambes lourdes, belle lumière…" {...field('notes')} />
           </label>
-        </>
+        </div>
       )}
 
-      <button class="btn btn--block" onClick={save}>
-        Enregistrer
+      <button class="btn btn--big" onClick={save}>
+        Valider
       </button>
     </div>
   );
@@ -210,58 +194,79 @@ function StrengthRun({ s }: { s: Session }) {
 
   return (
     <div class="stack">
+      <div class="dots" aria-label={`Étape ${idx + 1} sur ${list.length + 1}`}>
+        {[...list, null].map((e, i) => (
+          <span key={i} class={`dot ${i === idx ? 'dot--on' : ''} ${e && sets[e.id]?.every(Boolean) ? 'dot--done' : ''}`} />
+        ))}
+      </div>
+
       {!last && ex ? (
         <>
-          <div>
-            <p class="counter">
-              Exercice {idx + 1} sur {list.length}
+          <p class="muted">
+            Exercice {idx + 1}/{list.length}
+          </p>
+          <h2 class="sheet__title">{ex.name}</h2>
+          <p class="dose">{exerciseDose(ex, setsCount)}</p>
+          {ex.tempo && (
+            <p class="tempo">
+              <Timer size={16} /> {ex.tempo}
             </p>
-            <h2 class="sheet__title">{ex.name}</h2>
-            <p class="dose">{exerciseDose(ex, setsCount)}</p>
-          </div>
-          <div class="list">
-            <ul class="tips">
-              {ex.tempo && <li>Tempo : {ex.tempo}</li>}
-              {ex.cues.map((c) => (
-                <li key={c}>{c}</li>
-              ))}
-            </ul>
-          </div>
+          )}
+          <ul class="cues">
+            {ex.cues.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
           <div class="sets">
             {sets[ex.id].map((v, i) => (
               <button key={i} class={`set ${v ? 'set--on' : ''}`} aria-pressed={v} onClick={() => toggle(ex.id, i)}>
-                {v ? <Check size={22} strokeWidth={2.25} /> : `Série ${i + 1}`}
+                {v ? <Check size={30} strokeWidth={3} /> : `Série ${i + 1}`}
               </button>
             ))}
           </div>
-          <p class="help">Douleur au-dessus de 3 sur 10 : arrête cet exercice et passe au suivant.</p>
+          <p class="hint hint--calm">Douleur au-dessus de 3/10 ? Stop sur cet exercice, passe au suivant.</p>
         </>
       ) : (
         <>
-          <h2 class="sheet__title">Fin de séance</h2>
-          <Scale label="Douleur maximale" value={pain} min={0} max={10} onChange={setPain} />
+          <h2 class="sheet__title">Dernière étape</h2>
+          <p class="muted">Douleur max ressentie</p>
+          <div class="rpe">
+            <div class="rpe__value">
+              <span class="rpe__num">{pain}</span>/10
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={pain}
+              aria-label="Douleur sur 10"
+              onInput={(e) => setPain(Number((e.target as HTMLInputElement).value))}
+            />
+          </div>
           {pain > 3 && (
-            <p class="note note--warn">
-              <TriangleAlert size={14} strokeWidth={1.75} /> Au-dessus de 3 sur 10 : allège la prochaine fois. Si ça persiste, consulte.
+            <p class="hint hint--warn">
+              <TriangleAlert size={16} /> Au-dessus de 3/10 : allège la prochaine fois. Si ça persiste, consulte.
             </p>
           )}
-          <Scale label="Ressenti global" value={rpe} min={1} max={10} onChange={setRpe} describe={rpeLabel} />
+          <p class="muted">Ressenti global</p>
+          <RpePicker value={rpe} onChange={setRpe} />
         </>
       )}
 
-      <div class="row-actions">
+      <div class="row">
         {idx > 0 && (
-          <button class="btn btn--secondary" style={{ flex: '0 0 56px', padding: 0 }} aria-label="Exercice précédent" onClick={() => setIdx(idx - 1)}>
-            <ChevronLeft size={20} strokeWidth={1.75} />
+          <button class="btn btn--ghost btn--icon" aria-label="Exercice précédent" onClick={() => setIdx(idx - 1)}>
+            <ChevronLeft size={22} />
           </button>
         )}
         {last ? (
-          <button class="btn" onClick={finish}>
+          <button class="btn btn--big" onClick={finish}>
             Terminer
           </button>
         ) : (
-          <button class="btn" onClick={() => setIdx(idx + 1)}>
-            Suivant
+          <button class="btn btn--big" onClick={() => setIdx(idx + 1)}>
+            Suivant <ChevronRight size={20} />
           </button>
         )}
       </div>

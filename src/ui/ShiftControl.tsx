@@ -1,4 +1,4 @@
-import { TriangleAlert } from 'lucide-preact';
+import { TriangleAlert, Undo2 } from 'lucide-preact';
 import { useState } from 'preact/hooks';
 import { shiftTargets, shiftWarnings } from '../domain/cards';
 import type { ISODate } from '../domain/dates';
@@ -6,7 +6,7 @@ import { relLabel } from '../domain/format';
 import type { Session } from '../domain/types';
 import { actions, sessions, settings, today, workDays } from '../data/store';
 
-/** « Décaler : Demain · Après-demain », avec confirmation discrète si conflit. */
+/** Boutons « Décaler » (+1 / +2 jours) avec confirmation douce si conflit. */
 export function ShiftControl({ s, onMoved }: { s: Session; onMoved?: () => void }) {
   const t = today.value;
   const [pending, setPending] = useState<{ date: ISODate; warnings: string[] } | null>(null);
@@ -27,15 +27,17 @@ export function ShiftControl({ s, onMoved }: { s: Session; onMoved?: () => void 
   if (pending)
     return (
       <div class="confirm">
-        <p>Décaler à {relLabel(pending.date, t).toLowerCase()} ?</p>
+        <p>
+          <strong>{relLabel(pending.date, t)} ?</strong>
+        </p>
         {pending.warnings.map((w) => (
           <Warn key={w} text={w} />
         ))}
-        <div class="row-actions">
-          <button class="btn btn--small" onClick={() => doMove(pending.date)}>
-            Décaler
+        <div class="row">
+          <button class="btn" onClick={() => doMove(pending.date)}>
+            Oui, décaler
           </button>
-          <button class="btn btn--small btn--secondary" onClick={() => setPending(null)}>
+          <button class="btn btn--ghost" onClick={() => setPending(null)}>
             Annuler
           </button>
         </div>
@@ -43,11 +45,12 @@ export function ShiftControl({ s, onMoved }: { s: Session; onMoved?: () => void 
     );
 
   return (
-    <div class="shift" role="group" aria-label="Décaler la séance">
-      <span class="shift__label">Décaler</span>
+    <div class="chips" role="group" aria-label="Décaler la séance">
+      <span class="chips__label">Décaler :</span>
       {targets.map((d) => (
-        <button class="link" key={d} onClick={() => tryMove(d)}>
-          {d === s.originalDate ? `Revenir à ${relLabel(d, t).toLowerCase()}` : relLabel(d, t)}
+        <button class="chip" key={d} onClick={() => tryMove(d)}>
+          {d === s.originalDate && <Undo2 size={16} />}
+          {relLabel(d, t)}
         </button>
       ))}
     </div>
@@ -56,8 +59,8 @@ export function ShiftControl({ s, onMoved }: { s: Session; onMoved?: () => void 
 
 export function Warn({ text }: { text: string }) {
   return (
-    <p class="note note--warn">
-      <TriangleAlert size={14} strokeWidth={1.75} /> {text}
+    <p class="hint hint--warn">
+      <TriangleAlert size={16} /> {text}
     </p>
   );
 }

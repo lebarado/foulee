@@ -1,9 +1,9 @@
-﻿import { Download, TriangleAlert, Upload } from 'lucide-preact';
+﻿import { Brain, Database, Download, Footprints, Layers, TriangleAlert, Upload, Wrench } from 'lucide-preact';
 import { useState } from 'preact/hooks';
 import { toISO } from '../../domain/dates';
 import type { Settings } from '../../domain/types';
 import { actions, settings, showToast } from '../../data/store';
-import { Section } from '../kit';
+import { Section } from './Today';
 
 type NumPath =
   | ['efHrCeiling']
@@ -43,7 +43,7 @@ function Num({ label, path, step = 1, min = 0, max, pct, hint }: {
   const shown = pct ? Math.round(raw * 100) : raw;
   return (
     <label class="setting">
-      <span class="setting__label">
+      <span>
         {label}
         {hint && <small>{hint}</small>}
       </span>
@@ -84,7 +84,7 @@ export function SettingsPage() {
     try {
       await actions.importData(await file.text());
       setErr(null);
-      showToast({ title: 'Sauvegarde restaurée' });
+      showToast({ title: 'Sauvegarde restaurée', sub: 'Tout est revenu' });
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Import impossible.');
     }
@@ -92,36 +92,34 @@ export function SettingsPage() {
 
   return (
     <>
-      <header class="page-head">
-        <h1 class="title">Réglages</h1>
-      </header>
+      <h1 class="page-title">Réglages</h1>
 
-      <Section title="Entraînement">
-        <div class="list">
-          <Num label="Plafond FC en EF" path={['efHrCeiling']} hint="bpm, tu dois pouvoir parler" />
+      <Section title="Mon entraînement" icon={Footprints}>
+        <div class="settings">
+          <Num label="Plafond FC en EF" path={['efHrCeiling']} hint="bpm · test de la parole : tu dois pouvoir parler" />
           <Num label="Sorties par semaine" path={['weeklyRunTarget']} min={1} max={7} />
           <Num label="Renfos par semaine" path={['weeklyStrengthTarget']} min={0} max={7} />
           <Num label="Jokers par mois" path={['jokersPerMonth']} min={0} max={4} hint="protègent une semaine à une sortie près" />
         </div>
       </Section>
 
-      <Section title="Séances">
-        <div class="list">
-          <Num label="Fenêtre « prochaines »" path={['windowDays']} min={1} max={7} hint="jours à l’avance" />
-          <Num label="Décalage maximal" path={['maxShiftDays']} min={1} max={4} hint="jours après la date prévue" />
+      <Section title="Cartes" icon={Layers}>
+        <div class="settings">
+          <Num label="Fenêtre « à caler »" path={['windowDays']} min={1} max={7} hint="jours à l’avance" />
+          <Num label="Décalage max" path={['maxShiftDays']} min={1} max={4} hint="jours après la date prévue" />
         </div>
       </Section>
 
-      <Section title="Règles du coach">
-        <div class="list">
+      <Section title="Règles du coach" icon={Brain}>
+        <div class="settings">
           <Num label="Hausse de volume max" path={['volume', 'maxIncrease']} pct hint="% par semaine" />
           <Num label="Hausse plancher" path={['volume', 'minIncreaseMin']} hint="min, pour les petits volumes" />
           <Num label="Tolérance FC" path={['coach', 'hrMargin']} hint="bpm au-dessus du plafond avant marche" />
           <Num label="Course (alternance)" path={['coach', 'runWalk', 'runMin']} min={1} hint="min" />
           <Num label="Marche (alternance)" path={['coach', 'runWalk', 'walkMin']} min={1} hint="min" />
-          <Num label="Ressenti « dur » dès" path={['coach', 'rpeHigh']} min={1} max={10} hint="sur 10" />
+          <Num label="Ressenti « dur » dès" path={['coach', 'rpeHigh']} min={1} max={10} hint="/10" />
           <Num label="Réduction si dur" path={['coach', 'stepDownPct']} pct hint="%" />
-          <Num label="Ressenti « facile » jusqu’à" path={['coach', 'rpeEasy']} min={1} max={10} hint="sur 10" />
+          <Num label="Ressenti « facile » jusqu’à" path={['coach', 'rpeEasy']} min={1} max={10} hint="/10" />
           <Num label="Progression si facile" path={['coach', 'stepUpMin']} hint="min ajoutées" />
           <Num label="Durée max d’une sortie" path={['coach', 'maxRunMin']} hint="min" />
           <Num label="Coupure longue après" path={['coach', 'gapDays']} hint="jours" />
@@ -129,38 +127,34 @@ export function SettingsPage() {
         </div>
       </Section>
 
-      <Section title="Données">
-        <div class="list">
-          <button class="row" onClick={exportFile}>
-            <span class="row__icon">
-              <Download size={18} strokeWidth={1.75} />
-            </span>
-            <span class="row__main row__title">Exporter une sauvegarde</span>
+      <Section title="Mes données" icon={Database}>
+        <p class="help">Tout est stocké sur ce téléphone. Exporte régulièrement une sauvegarde.</p>
+        <div class="row">
+          <button class="btn btn--soft" onClick={exportFile}>
+            <Download size={18} /> Exporter
           </button>
-          <label class="row" style={{ cursor: 'pointer' }}>
-            <span class="row__icon">
-              <Upload size={18} strokeWidth={1.75} />
-            </span>
-            <span class="row__main row__title">Importer une sauvegarde</span>
+          <label class="btn btn--soft">
+            <Upload size={18} /> Importer
             <input type="file" accept="application/json,.json" class="sr-only" onChange={importFile} />
           </label>
-          <button
-            class="row"
-            onClick={() => {
-              if (confirm('Tout effacer et revenir aux données de départ ? Pense à exporter avant.')) void actions.reset();
-            }}
-          >
-            <span class="row__main row__title" style={{ color: 'var(--danger)' }}>
-              Réinitialiser l’app
-            </span>
-          </button>
         </div>
-        {err && (
-          <p class="note note--warn">
-            <TriangleAlert size={14} strokeWidth={1.75} /> {err}
-          </p>
-        )}
-        <p class="help">Tes données restent sur ce téléphone. Exporte une sauvegarde de temps en temps.</p>
+        {err && <p class="hint hint--warn"><TriangleAlert size={16} /> {err}</p>}
+        <button
+          class="link"
+          onClick={() => {
+            if (confirm('Tout effacer et revenir aux données de départ ? Pense à exporter avant.')) void actions.reset();
+          }}
+        >
+          Réinitialiser l’app
+        </button>
+      </Section>
+
+      <Section title="Bientôt" icon={Wrench}>
+        <ul class="cues">
+          <li>Import Garmin (CSV puis FIT)</li>
+          <li>Rappels : export .ics avec alarmes (en attendant, bouton Google Agenda sur chaque carte du planning)</li>
+          <li>Notifications push via ton serveur maison</li>
+        </ul>
       </Section>
     </>
   );

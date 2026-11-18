@@ -1,4 +1,4 @@
-import { Lock } from 'lucide-preact';
+import { Award, ChartColumn, Flame, Footprints, HeartPulse, History, Lock, Smile, Trophy } from 'lucide-preact';
 import { addDays, diffDays, monthKey, weekStart } from '../../domain/dates';
 import { fmtNum, formatPace, MONTHS_LONG, shortLabel } from '../../domain/format';
 import { badges, hrCeilingOf, records, streak, type WeekMark } from '../../domain/gamification';
@@ -6,7 +6,7 @@ import { doneRunMinutesByWeek, loadCheck } from '../../domain/load';
 import { efficiency, paceSecPerKm } from '../../domain/metrics';
 import { cfgEff, sessions, settings, today } from '../../data/store';
 import { badgeIcon } from '../icons';
-import { Section } from '../kit';
+import { Section } from './Today';
 
 const MARK_LABEL: Record<WeekMark, string> = {
   full: 'Semaine tenue',
@@ -24,34 +24,29 @@ export function Progress() {
   const st = streak(all, cfg, t);
   const rec = records(all, cfg, t);
   const kmMonth = runs.filter((s) => monthKey(s.date) === monthKey(t)).reduce((a, s) => a + (s.log?.distanceKm ?? 0), 0);
-  const allBadges = badges(all, cfg, t);
 
   return (
     <>
-      <header class="page-head">
-        <h1 class="title">Progrès</h1>
-      </header>
+      <h1 class="page-title">Progrès</h1>
 
-      <div class="list stats">
+      <div class="stats">
         <Stat label="Sorties depuis la reprise" value={String(reprise.length)} />
         <Stat label="Km ce mois-ci" value={fmtNum(kmMonth)} />
         <Stat label="Série actuelle" value={`${st.current} sem.`} />
         <Stat label="Meilleure série" value={`${st.best} sem.`} />
       </div>
 
-      <Section title="Régularité">
-        <div class="list">
-          <div class="weeks">
-            {st.marks.map((m) => (
-              <div key={m.week} class={`wk wk--${m.mark}`} title={`${shortLabel(m.week)} · ${MARK_LABEL[m.mark]}`}>
-                {m.runs}
-              </div>
-            ))}
-          </div>
+      <Section title="Régularité" icon={Flame}>
+        <div class="weeks">
+          {st.marks.map((m) => (
+            <div key={m.week} class={`wk wk--${m.mark}`} title={`${shortLabel(m.week)} · ${MARK_LABEL[m.mark]}`}>
+              <span>{m.runs}</span>
+            </div>
+          ))}
         </div>
         <p class="help">
-          Une case par semaine, le chiffre compte les sorties. <span class="lg lg--full" /> tenue · <span class="lg lg--protected" />{' '}
-          joker · <span class="lg lg--broken" /> trou
+          Une case = une semaine (chiffre = sorties). <span class="lg lg--full" /> tenue · <span class="lg lg--protected" /> joker ·{' '}
+          <span class="lg lg--broken" /> trou · <span class="lg lg--pending" /> en cours
         </p>
       </Section>
 
@@ -59,26 +54,43 @@ export function Progress() {
       <EfficiencyChart />
       <RpeChart />
 
-      <Section title="Records">
-        <div class="list">
-          <Row label="Plus longue sortie" value={rec.longestKm ? `${fmtNum(rec.longestKm.value, 2)} km` : '—'} />
-          <Row label="Plus longue durée" value={rec.longestMin ? `${Math.round(rec.longestMin.value)} min` : '—'} />
-          <Row label="Meilleure efficacité" value={rec.bestEfficiency ? fmtNum(rec.bestEfficiency.value, 3) : '—'} />
-          <Row label="Plus grosse semaine" value={rec.bestWeekMin ? `${Math.round(rec.bestWeekMin.value)} min` : '—'} />
-          <Row label="Plus longue série" value={`${rec.bestStreak} sem.`} />
-        </div>
+      <Section title="Records" icon={Trophy}>
+        <ul class="records">
+          <li>
+            <span>Plus longue sortie</span>
+            <b>{rec.longestKm ? `${fmtNum(rec.longestKm.value, 2)} km` : '—'}</b>
+          </li>
+          <li>
+            <span>Plus longue durée</span>
+            <b>{rec.longestMin ? `${Math.round(rec.longestMin.value)} min` : '—'}</b>
+          </li>
+          <li>
+            <span>Meilleure efficacité</span>
+            <b>{rec.bestEfficiency ? fmtNum(rec.bestEfficiency.value, 3) : '—'}</b>
+          </li>
+          <li>
+            <span>Plus grosse semaine</span>
+            <b>{rec.bestWeekMin ? `${Math.round(rec.bestWeekMin.value)} min` : '—'}</b>
+          </li>
+          <li>
+            <span>Plus longue série</span>
+            <b>{rec.bestStreak} sem.</b>
+          </li>
+        </ul>
       </Section>
 
-      <Section title="Badges" aside={`${allBadges.filter((b) => b.unlocked).length} sur ${allBadges.length}`}>
-        <div class="list badges">
-          {allBadges.map((b) => {
+      <Section title="Badges" icon={Award}>
+        <div class="badges">
+          {badges(all, cfg, t).map((b) => {
             const I = b.unlocked ? badgeIcon(b.id) : Lock;
             return (
-              <div key={b.id} class={`badge ${b.unlocked ? 'badge--on' : ''}`} title={b.desc}>
-                <I size={22} strokeWidth={1.5} />
-                <strong>{b.name}</strong>
-                <small>{b.desc}</small>
-              </div>
+            <div key={b.id} class={`badge ${b.unlocked ? 'badge--on' : ''}`} title={b.desc}>
+              <span class="badge__icon">
+                <I size={26} />
+              </span>
+              <strong>{b.name}</strong>
+              <small>{b.desc}</small>
+            </div>
             );
           })}
         </div>
@@ -86,32 +98,28 @@ export function Progress() {
 
       <MonthlyHistory />
 
-      <Section title="Dernières sorties">
-        <div class="list">
+      <Section title="Dernières sorties" icon={Footprints}>
+        <ul class="records">
           {runs
             .slice(-6)
             .reverse()
             .map((s) => {
               const p = paceSecPerKm(s.log);
-              const value = [
-                s.log?.distanceKm ? `${fmtNum(s.log.distanceKm, 2)} km` : '',
-                p ? formatPace(p) : '',
-                s.log?.avgHr ? `${s.log.avgHr} bpm` : '',
-              ]
-                .filter(Boolean)
-                .join(' · ');
               return (
-                <div key={s.id} class="row">
-                  <div class="row__main">
-                    <div class="row__title">{s.title}</div>
-                    <div class="row__meta">{shortLabel(s.date)}</div>
-                  </div>
-                  <span class="row__aside">{value}</span>
-                </div>
+                <li key={s.id}>
+                  <span>
+                    {shortLabel(s.date)} · {s.title}
+                  </span>
+                  <b>
+                    {s.log?.distanceKm ? `${fmtNum(s.log.distanceKm, 2)} km` : ''}
+                    {p ? ` · ${formatPace(p)}` : ''}
+                    {s.log?.avgHr ? ` · ${s.log.avgHr} bpm` : ''}
+                  </b>
+                </li>
               );
             })}
-        </div>
-        <p class="help">Plafond FC actuel : {cfg.efHrCeiling} bpm, modifiable dans les réglages.</p>
+        </ul>
+        <p class="help">Plafond FC actuel : {cfg.efHrCeiling} bpm (modifiable dans les réglages).</p>
       </Section>
     </>
   );
@@ -122,15 +130,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div class="stat">
       <small>{label}</small>
       <strong>{value}</strong>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div class="row">
-      <span class="row__main row__title">{label}</span>
-      <span class="row__aside">{value}</span>
     </div>
   );
 }
@@ -154,41 +153,39 @@ function WeeklyVolume() {
   const y = (v: number) => H - PAD.b - (v / max) * (H - PAD.t - PAD.b);
 
   return (
-    <Section title="Volume hebdomadaire" aside="minutes de course">
-      <div class="list">
-        <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Minutes de course par semaine sur 8 semaines">
-          <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} class="axis" />
-          {weeks.map((w, i) => (
-            <g key={w}>
-              <rect
-                x={PAD.l + i * bw + 7}
-                y={y(vals[i])}
-                width={bw - 14}
-                height={Math.max(0, y(0) - y(vals[i]))}
-                rx={3}
-                class={w === cur ? 'bar-cur' : 'bar-past'}
-              />
-              {vals[i] > 0 && (
-                <text x={PAD.l + i * bw + bw / 2} y={y(vals[i]) - 4} class="lbl" text-anchor="middle">
-                  {Math.round(vals[i])}
-                </text>
-              )}
-              <text x={PAD.l + i * bw + bw / 2} y={H - 6} class="lbl" text-anchor="middle">
-                {shortLabel(w).split(' ')[1]}
+    <Section title="Volume hebdo (minutes de course)" icon={ChartColumn}>
+      <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Minutes de course par semaine sur 8 semaines">
+        <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} class="axis" />
+        {weeks.map((w, i) => (
+          <g key={w}>
+            <rect
+              x={PAD.l + i * bw + 4}
+              y={y(vals[i])}
+              width={bw - 8}
+              height={Math.max(0, y(0) - y(vals[i]))}
+              rx={5}
+              class={w === cur ? 'bar-cur' : 'bar-past'}
+            />
+            {vals[i] > 0 && (
+              <text x={PAD.l + i * bw + bw / 2} y={y(vals[i]) - 4} class="lbl" text-anchor="middle">
+                {Math.round(vals[i])}
               </text>
-            </g>
-          ))}
-          {lc && (
-            <>
-              <line x1={PAD.l} x2={W - PAD.r} y1={y(lc.allowedMin)} y2={y(lc.allowedMin)} class="limit" />
-              <text x={PAD.l + 2} y={y(lc.allowedMin) - 4} class="lbl lbl--warn">
-                max conseillé {Math.round(lc.allowedMin)}
-              </text>
-            </>
-          )}
-        </svg>
-      </div>
-      <p class="help">La ligne des +10 % apparaît après deux semaines d’historique.</p>
+            )}
+            <text x={PAD.l + i * bw + bw / 2} y={H - 6} class="lbl" text-anchor="middle">
+              {shortLabel(w).split(' ')[1]}
+            </text>
+          </g>
+        ))}
+        {lc && (
+          <>
+            <line x1={PAD.l} x2={W - PAD.r} y1={y(lc.allowedMin)} y2={y(lc.allowedMin)} class="limit" />
+            <text x={PAD.l + 2} y={y(lc.allowedMin) - 4} class="lbl lbl--warn">
+              max conseillé {Math.round(lc.allowedMin)}
+            </text>
+          </>
+        )}
+      </svg>
+      <p class="help">Règle des 10 % : la ligne apparaît dès qu’il y a 2 semaines d’historique.</p>
     </Section>
   );
 }
@@ -211,24 +208,27 @@ function EfficiencyChart() {
   const path = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.s.date)},${y(p.ef)}`).join(' ');
 
   return (
-    <Section title="Efficacité à l’effort" aside="vitesse ÷ FC">
-      <div class="list">
-        <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Évolution de l’efficacité : vitesse divisée par la fréquence cardiaque">
-          <line x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b} y2={H - PAD.b} class="axis" />
-          {pts.length > 1 && <path d={path} class="line" />}
-          {pts.map((p) => (
-            <g key={p.s.id}>
-              <circle cx={x(p.s.date)} cy={y(p.ef)} r={4} class={p.s.log!.avgHr! <= hrCeilingOf(p.s, cfg) ? 'pt' : 'pt pt--hot'} />
-              <text x={x(p.s.date)} y={H - 6} class="lbl" text-anchor="middle">
-                {shortLabel(p.s.date).split(' ').slice(1).join(' ')}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </div>
+    <Section title="Efficacité à l’effort" icon={HeartPulse}>
+      <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Évolution de l’efficacité : vitesse divisée par la fréquence cardiaque">
+        <line x1={PAD.l} x2={W - PAD.r} y1={H - PAD.b} y2={H - PAD.b} class="axis" />
+        {pts.length > 1 && <path d={path} class="line" />}
+        {pts.map((p) => (
+          <g key={p.s.id}>
+            <circle
+              cx={x(p.s.date)}
+              cy={y(p.ef)}
+              r={5}
+              class={p.s.log!.avgHr! <= hrCeilingOf(p.s, cfg) ? 'pt pt--ok' : 'pt pt--hot'}
+            />
+            <text x={x(p.s.date)} y={H - 6} class="lbl" text-anchor="middle">
+              {shortLabel(p.s.date).split(' ').slice(1).join(' ')}
+            </text>
+          </g>
+        ))}
+      </svg>
       <p class="help">
-        Si la courbe monte, tu vas plus vite pour le même effort. <span class="lg lg--full" /> sous le plafond FC ·{' '}
-        <span class="lg lg--hot" /> au-dessus
+        Vitesse ÷ FC. Si la courbe monte, tu vas plus vite pour le même effort : c’est LE signe de progrès en EF.{' '}
+        <span class="lg lg--full" /> sous le plafond · <span class="lg lg--hot" /> au-dessus
       </p>
     </Section>
   );
@@ -243,24 +243,24 @@ function RpeChart() {
   const bw = (W - PAD.l - PAD.r) / 12;
   const y = (v: number) => H - PAD.b - (v / 10) * (H - PAD.t - PAD.b);
   return (
-    <Section title="Ressenti" aside="12 dernières séances">
-      <div class="list">
-        <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Ressenti des 12 dernières séances">
-          {[3, 7].map((v) => (
-            <line key={v} x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} class="grid" />
-          ))}
-          <text x={8} y={y(3) + 4} class="lbl">
-            3
-          </text>
-          <text x={8} y={y(7) + 4} class="lbl">
-            7
-          </text>
-          {pts.map((s, i) => (
-            <circle key={s.id} cx={PAD.l + i * bw + bw / 2} cy={y(s.log!.rpe!)} r={4} class={s.kind === 'run' ? 'pt' : 'pt pt--other'} />
-          ))}
-        </svg>
-      </div>
-      <p class="help">En endurance fondamentale, vise 3 à 5 sur 10.</p>
+    <Section title="Ressenti" icon={Smile}>
+      <svg viewBox={`0 0 ${W} ${H}`} class="chart" role="img" aria-label="Ressenti des 12 dernières séances">
+        {[3, 7].map((v) => (
+          <line key={v} x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} class="grid" />
+        ))}
+        <text x={2} y={y(3) + 4} class="lbl">3</text>
+        <text x={2} y={y(7) + 4} class="lbl">7</text>
+        {pts.map((s, i) => (
+          <circle
+            key={s.id}
+            cx={PAD.l + i * bw + bw / 2}
+            cy={y(s.log!.rpe!)}
+            r={6}
+            class={s.kind === 'run' ? 'pt pt--run' : 'pt pt--str'}
+          />
+        ))}
+      </svg>
+      <p class="help">En endurance fondamentale, vise 3 à 5 / 10. Au-dessus de 7 souvent, le coach allège.</p>
     </Section>
   );
 }
@@ -277,20 +277,18 @@ function MonthlyHistory() {
   const rows = [...months.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-8);
   const max = Math.max(...rows.map(([, v]) => v), 1);
   return (
-    <Section title="Volume mensuel" aside="km">
-      <div class="list">
-        <ul class="hbars">
-          {rows.map(([m, km]) => (
-            <li key={m}>
-              <span>{MONTHS_LONG[Number(m.slice(5)) - 1].slice(0, 4)}.</span>
-              <div class="hbar">
-                <i style={{ width: `${(km / max) * 100}%` }} />
-              </div>
-              <b>{fmtNum(km)}</b>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <Section title="Volume mensuel (km)" icon={History}>
+      <ul class="hbars">
+        {rows.map(([m, km]) => (
+          <li key={m}>
+            <span>{MONTHS_LONG[Number(m.slice(5)) - 1].slice(0, 4)}.</span>
+            <div class="hbar">
+              <div class="hbar__fill" style={{ width: `${(km / max) * 100}%` }} />
+            </div>
+            <b>{fmtNum(km)}</b>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }

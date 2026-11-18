@@ -1,25 +1,32 @@
-import { Check, Gift, Lock, Palette, Shield, Trash2 } from 'lucide-preact';
+import { Check, Dumbbell, Footprints, Gift, Lock, Palette, Plus, Shield, Sparkles, Star, Target, Trash2 } from 'lucide-preact';
 import { useState } from 'preact/hooks';
 import { shortLabel } from '../domain/format';
 import { ACTIVE_DAYS_GOAL, XP, levelThreshold, xpEvents } from '../domain/gamification';
 import { THEMES, isThemeUnlocked, levelTitle, unlocksAt, type Unlock } from '../domain/levels';
 import type { PersonalReward } from '../domain/types';
 import { actions, level, newId, sessions, settings, today, xpTotal } from '../data/store';
-import { Progress, Section } from './kit';
 
 type View = 'path' | 'rewards' | 'xp';
 
 export function LevelSheet() {
   const [view, setView] = useState<View>('path');
   const lv = level.value;
+  const deg = Math.round(lv.progress * 360);
   return (
     <div class="stack">
-      <div class="lv">
-        <div class="lv__num">{lv.level}</div>
-        <p class="lv__title">{levelTitle(lv.level)}</p>
-        <Progress value={lv.progress} />
-        <p class="lv__meta">
-          {lv.into} sur {lv.span} XP · encore {lv.span - lv.into} XP pour le niveau {lv.level + 1}
+      <div class="lv-hero">
+        <div class="ring ring--big" style={{ background: `conic-gradient(var(--xp) ${deg}deg, var(--surface-3) 0)` }}>
+          <div class="ring__inner">
+            <small>Niveau</small>
+            <strong>{lv.level}</strong>
+          </div>
+        </div>
+        <h2 class="sheet__title">{levelTitle(lv.level)}</h2>
+        <div class="bar bar--big">
+          <div class="bar__fill" style={{ width: `${lv.progress * 100}%` }} />
+        </div>
+        <p class="muted">
+          {lv.into} / {lv.span} XP · encore <strong class="xp-text">{lv.span - lv.into} XP</strong> pour le niveau {lv.level + 1}
         </p>
       </div>
 
@@ -28,7 +35,7 @@ export function LevelSheet() {
       <div class="seg" role="tablist">
         {(
           [
-            ['path', 'Paliers'],
+            ['path', 'Parcours'],
             ['rewards', 'Récompenses'],
             ['xp', 'XP'],
           ] as [View, string][]
@@ -46,7 +53,7 @@ export function LevelSheet() {
   );
 }
 
-/* ---------- Récompenses d'un palier ---------- */
+/* ---------- Prochaine récompense ---------- */
 
 interface RewardItem {
   level: number;
@@ -63,7 +70,21 @@ function rewardsAt(lvl: number, perso: PersonalReward[]): RewardItem[] {
 }
 
 const KIND_ICON = { theme: Palette, joker: Shield, perso: Gift } as const;
-const rewardLabel = (r: RewardItem) => (r.kind === 'perso' ? `Cadeau : ${r.label}` : r.label);
+
+function RewardChip({ r, locked }: { r: RewardItem; locked?: boolean }) {
+  const I = KIND_ICON[r.kind];
+  return (
+    <div class={`reward reward--${r.kind} ${locked ? 'reward--locked' : ''}`}>
+      <span class="reward__icon">
+        <I size={18} />
+      </span>
+      <div>
+        <strong>{r.kind === 'perso' ? `Cadeau : ${r.label}` : r.label}</strong>
+        {r.desc && <small>{r.desc}</small>}
+      </div>
+    </div>
+  );
+}
 
 function NextReward() {
   const lv = level.value.level;
@@ -73,73 +94,52 @@ function NextReward() {
     if (!items.length) continue;
     const missing = levelThreshold(l) - xpTotal.value;
     return (
-      <Section title={`Prochaine récompense · niveau ${l}`} aside={`encore ${missing} XP`}>
-        <div class="list">
-          {items.map((r) => {
-            const I = KIND_ICON[r.kind];
-            return (
-              <div key={r.label} class="row">
-                <span class="row__icon">
-                  <I size={18} strokeWidth={1.75} />
-                </span>
-                <span class="row__main">
-                  <span class="row__title">{rewardLabel(r)}</span>
-                  {r.desc && (
-                    <span class="row__meta" style={{ display: 'block' }}>
-                      {r.desc}
-                    </span>
-                  )}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </Section>
+      <div class="next-reward">
+        <p class="next-reward__title">
+          <Sparkles size={16} /> Prochaine récompense · niveau {l} · encore {missing} XP
+        </p>
+        {items.map((r) => (
+          <RewardChip key={r.label} r={r} locked />
+        ))}
+      </div>
     );
   }
   return null;
 }
 
-/* ---------- Paliers ---------- */
+/* ---------- Parcours des niveaux ---------- */
 
 function Path() {
   const lv = level.value.level;
   const perso = settings.value.rewards;
   const max = Math.max(10, lv + 4, ...perso.map((r) => r.level));
   return (
-    <div class="list">
+    <ol class="path">
       {Array.from({ length: max }, (_, i) => i + 1).map((l) => {
         const state = l < lv ? 'done' : l === lv ? 'current' : 'locked';
         const items = rewardsAt(l, perso);
         return (
-          <div key={l} class={`row ${state === 'locked' ? 'row--locked' : ''}`}>
-            <span class={`path__mark path__mark--${state}`}>{state === 'done' ? <Check size={13} strokeWidth={2.5} /> : l}</span>
-            <div class="row__main">
-              <div class="row__title">{levelTitle(l)}</div>
-              {items.length > 0 && (
-                <ul class="path__rewards">
-                  {items.map((r) => {
-                    const I = KIND_ICON[r.kind];
-                    return (
-                      <li key={r.label}>
-                        <I size={13} strokeWidth={1.75} /> {rewardLabel(r)}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+          <li key={l} class={`path__step path__step--${state}`}>
+            <span class="path__dot">{state === 'done' ? <Check size={16} strokeWidth={3} /> : state === 'locked' ? <Lock size={14} /> : l}</span>
+            <div class="path__body">
+              <div class="path__head">
+                <strong>
+                  Niv. {l} · {levelTitle(l)}
+                </strong>
+                <small>{levelThreshold(l)} XP</small>
+              </div>
+              {items.map((r) => (
+                <RewardChip key={r.label} r={r} locked={state === 'locked'} />
+              ))}
             </div>
-            <span class="row__aside" style={{ alignSelf: 'flex-start', fontSize: '13px' }}>
-              {levelThreshold(l)} XP
-            </span>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
-/* ---------- Cadeaux perso + thèmes ---------- */
+/* ---------- Récompenses : cadeaux perso + thèmes ---------- */
 
 function Rewards() {
   const cfg = settings.value;
@@ -148,42 +148,47 @@ function Rewards() {
   const sorted = [...cfg.rewards].sort((a, b) => a.level - b.level);
   return (
     <>
-      <div>
-        <Section title="Tes cadeaux">
-          <div class="list">
-            {sorted.map((r) => (
-              <div key={r.id} class={`perso ${r.level <= lv ? 'perso--won' : ''}`}>
-                <div class="mini">
-                  <button aria-label="Niveau moins" onClick={() => save(cfg.rewards.map((x) => (x.id === r.id ? { ...x, level: Math.max(2, x.level - 1) } : x)))}>
-                    −
-                  </button>
-                  <span>
-                    niv. <strong>{r.level}</strong>
-                  </span>
-                  <button aria-label="Niveau plus" onClick={() => save(cfg.rewards.map((x) => (x.id === r.id ? { ...x, level: x.level + 1 } : x)))}>
-                    +
-                  </button>
-                </div>
-                <input
-                  value={r.label}
-                  aria-label="Cadeau"
-                  onChange={(e) => save(cfg.rewards.map((x) => (x.id === r.id ? { ...x, label: (e.target as HTMLInputElement).value } : x)))}
-                />
-                <button class="icon-btn" aria-label="Supprimer le cadeau" onClick={() => save(cfg.rewards.filter((x) => x.id !== r.id))}>
-                  <Trash2 size={16} strokeWidth={1.75} />
+      <section class="block">
+        <h3 class="block__title">
+          <Gift size={16} /> Tes cadeaux
+        </h3>
+        <p class="block__text muted">Choisis ce que tu t’offres en vrai à chaque palier. C’est ta carotte.</p>
+        <ul class="perso">
+          {sorted.map((r) => (
+            <li key={r.id} class={r.level <= lv ? 'perso--won' : ''}>
+              <div class="perso__lvl">
+                <button aria-label="Niveau moins" onClick={() => save(cfg.rewards.map((x) => (x.id === r.id ? { ...x, level: Math.max(2, x.level - 1) } : x)))}>
+                  −
+                </button>
+                <span>Niv. {r.level}</span>
+                <button aria-label="Niveau plus" onClick={() => save(cfg.rewards.map((x) => (x.id === r.id ? { ...x, level: x.level + 1 } : x)))}>
+                  +
                 </button>
               </div>
-            ))}
-          </div>
-          <button class="link" onClick={() => save([...cfg.rewards, { id: newId(), level: Math.max(lv + 1, 2), label: 'Un petit plaisir' }])}>
-            Ajouter un cadeau
-          </button>
-          <p class="help">Une vraie récompense que tu t’offres en atteignant le palier.</p>
-        </Section>
-      </div>
+              <input
+                value={r.label}
+                aria-label="Cadeau"
+                onChange={(e) => save(cfg.rewards.map((x) => (x.id === r.id ? { ...x, label: (e.target as HTMLInputElement).value } : x)))}
+              />
+              <button class="icon-btn icon-btn--small" aria-label="Supprimer le cadeau" onClick={() => save(cfg.rewards.filter((x) => x.id !== r.id))}>
+                <Trash2 size={16} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button
+          class="btn btn--soft"
+          onClick={() => save([...cfg.rewards, { id: newId(), level: Math.max(lv + 1, 2), label: 'Un petit plaisir' }])}
+        >
+          <Plus size={18} /> Ajouter un cadeau
+        </button>
+      </section>
 
-      <Section title="Couleur d’accent">
-        <div class="list themes">
+      <section class="block">
+        <h3 class="block__title">
+          <Palette size={16} /> Thèmes
+        </h3>
+        <div class="themes">
           {THEMES.map((t) => {
             const unlocked = isThemeUnlocked(t.id, lv);
             const on = cfg.theme === t.id;
@@ -195,78 +200,99 @@ function Rewards() {
                 onClick={() => actions.saveSettings({ ...cfg, theme: t.id })}
               >
                 <span class="theme__swatch" style={{ background: t.color }}>
-                  {!unlocked && <Lock size={14} strokeWidth={2} />}
+                  {!unlocked && <Lock size={16} color="#000" />}
+                  {on && <Check size={18} color={t.ink} strokeWidth={3} />}
                 </span>
-                {unlocked ? t.label : `Niv. ${t.level}`}
+                <small>{unlocked ? t.label : `Niv. ${t.level}`}</small>
               </button>
             );
           })}
         </div>
-      </Section>
+      </section>
     </>
   );
 }
 
-/* ---------- XP ---------- */
+/* ---------- Gagner de l'XP ---------- */
 
 function EarnXp() {
   const cfg = settings.value;
   const events = xpEvents(sessions.value, cfg, today.value).slice(0, 10);
-  const rows: [string, number][] = [
-    ['Une sortie faite, même décalée', XP.run],
-    ['Natation ou vélo', XP.swim],
-    ['Renfo ou calisthénie', XP.strength],
-    ['FC moyenne sous le plafond', XP.underCeiling],
-    ['Ressenti noté', XP.rpe],
-    ['Chiffres de la montre saisis', XP.details],
-    [`Quête : ${cfg.weeklyRunTarget} sorties dans la semaine`, 100],
-    ['Quête : séances de renfo', 30],
-    [`Quête : bouger ${ACTIVE_DAYS_GOAL} jours différents`, 30],
-    ['Quête : ressenti à chaque sortie', 20],
+  const rows: [typeof Footprints, string, number][] = [
+    [Footprints, 'Une sortie faite (même décalée)', XP.run],
+    [Dumbbell, 'Une séance de renfo', XP.strength],
+    [Star, 'FC moyenne sous le plafond', XP.underCeiling],
+    [Star, 'Ressenti noté', XP.rpe],
+    [Star, 'Chiffres de la montre saisis', XP.details],
+    [Target, `Quête : ${cfg.weeklyRunTarget} sorties dans la semaine`, 100],
+    [Target, 'Quête : séances de renfo', 30],
+    [Target, `Quête : bouger ${ACTIVE_DAYS_GOAL} jours différents`, 30],
+    [Target, 'Quête : ressenti à chaque sortie', 20],
   ];
   return (
     <>
-      <Section title="À quoi sert l’XP">
-        <div class="list">
-          <ul class="tips">
-            <li>Des jokers en plus aux niveaux 4 et 8 : ta série tient quand le travail mange une sortie.</li>
-            <li>Tes cadeaux : une vraie récompense par palier, que tu choisis.</li>
-            <li>De nouvelles couleurs d’accent, et un titre par niveau.</li>
-            <li>La régularité rapporte, jamais la vitesse. Une séance manquée ne fait rien perdre.</li>
-          </ul>
-        </div>
-      </Section>
+      <section class="block">
+        <h3 class="block__title">Pourquoi monter de niveau ?</h3>
+        <ul class="why">
+          <li>
+            <Shield size={20} />
+            <span>
+              <strong>Des jokers en plus</strong> (niveaux 4 et 8) : ta série tient même quand le travail mange une sortie.
+            </span>
+          </li>
+          <li>
+            <Gift size={20} />
+            <span>
+              <strong>Tes cadeaux</strong> : tu fixes une vraie récompense par palier, l’app te prévient quand tu l’as gagnée.
+            </span>
+          </li>
+          <li>
+            <Palette size={20} />
+            <span>
+              <strong>Des thèmes</strong> qui changent la couleur de tes cartes.
+            </span>
+          </li>
+          <li>
+            <Sparkles size={20} />
+            <span>
+              <strong>Un nouveau titre</strong> à chaque niveau, jusqu’à « Légende de la Moselle ».
+            </span>
+          </li>
+        </ul>
+        <p class="block__text muted">L’XP récompense la régularité, jamais la vitesse. Une séance manquée ne fait rien perdre.</p>
+      </section>
 
-      <Section title="Barème">
-        <div class="list">
-          {rows.map(([label, xp]) => (
-            <div key={label} class="row">
-              <span class="row__main row__title">{label}</span>
-              <span class="row__aside">+{xp}</span>
-            </div>
+      <section class="block">
+        <h3 class="block__title">Barème</h3>
+        <ul class="xp-lines">
+          {rows.map(([I, label, xp]) => (
+            <li key={label}>
+              <span>
+                <I size={16} /> {label}
+              </span>
+              <b>+{xp}</b>
+            </li>
           ))}
-        </div>
-      </Section>
+        </ul>
+      </section>
 
-      <Section title="Dernières XP gagnées">
-        <div class="list">
-          {events.length ? (
-            events.map((e, i) => (
-              <div key={i} class="row">
-                <span class="row__main">
-                  <span class="row__title">{e.label}</span>
-                  <span class="row__meta" style={{ display: 'block' }}>
-                    {shortLabel(e.date)}
-                  </span>
+      <section class="block">
+        <h3 class="block__title">Dernières XP gagnées</h3>
+        {events.length ? (
+          <ul class="xp-lines">
+            {events.map((e, i) => (
+              <li key={i}>
+                <span>
+                  <small class="muted">{shortLabel(e.date)}</small> {e.label}
                 </span>
-                <span class="row__aside">+{e.xp}</span>
-              </div>
-            ))
-          ) : (
-            <p class="empty">Ta première séance apparaîtra ici.</p>
-          )}
-        </div>
-      </Section>
+                <b>+{e.xp}</b>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="muted">Ta première séance faite apparaîtra ici.</p>
+        )}
+      </section>
     </>
   );
 }

@@ -1,4 +1,4 @@
-﻿import { computed, effect, signal } from '@preact/signals';
+import { computed, effect, signal } from '@preact/signals';
 import { completeSession, moveSession, shiftWarnings } from '../domain/cards';
 import { DEFAULT_SETTINGS } from '../domain/catalog';
 import type { Suggestion } from '../domain/coach';
@@ -30,13 +30,14 @@ export const level = computed(() => levelInfo(xpTotal.value));
 /** Réglages + bonus débloqués par le niveau (jokers…). */
 export const cfgEff = computed(() => effectiveSettings(settings.value, level.value.level));
 
-/* Thème : la couleur d'accent suit le thème choisi, s'il est débloqué (sinon le premier). */
+/* Thème : la couleur « course » suit le thème choisi, s'il est débloqué. */
 effect(() => {
-  const t = themeById(settings.value.theme);
-  const use = isThemeUnlocked(t.id, level.value.level) ? t : themeById('');
+  const id = isThemeUnlocked(settings.value.theme, level.value.level) ? settings.value.theme : 'menthe';
+  const t = themeById(id);
   const root = document.documentElement.style;
-  root.setProperty('--accent-l', use.color);
-  root.setProperty('--accent-d', use.dark);
+  root.setProperty('--run', t.color);
+  root.setProperty('--run-ink', t.ink);
+  root.setProperty('--run-soft', `${t.color}24`);
 });
 
 export interface Toast {
@@ -116,7 +117,7 @@ async function withXp(fn: () => Promise<void>, party = false): Promise<number> {
         party: true,
       });
     } else {
-      showToast({ title: `+${gained} XP`, party });
+      showToast({ title: `+${gained} XP`, sub: party ? 'Bien joué !' : undefined, party });
     }
   }
   return gained;
@@ -125,7 +126,7 @@ async function withXp(fn: () => Promise<void>, party = false): Promise<number> {
 export const actions = {
   move: async (id: string, date: ISODate) => {
     await update(id, (s) => moveSession(s, date));
-    showToast({ title: `Décalée · ${relLabel(date, today.value)}` });
+    showToast({ title: `Décalée · ${relLabel(date, today.value)}`, sub: 'Aucun souci' });
   },
 
   /** Glisser-déposer sur le planning : on replanifie, la nouvelle date devient la référence. */
@@ -133,7 +134,7 @@ export const actions = {
     await update(id, (s) => ({ ...s, date, originalDate: date }));
     const s = sessions.value.find((x) => x.id === id);
     const w = s ? shiftWarnings(s, date, sessions.value, workDays.value, today.value) : [];
-    showToast({ title: `Déplacée · ${relLabel(date, today.value)}`, sub: w[0] });
+    showToast({ title: `Déplacée · ${relLabel(date, today.value)}`, sub: w[0] ?? 'C’est noté' });
   },
 
   markDone: (id: string, log: SessionLog) =>

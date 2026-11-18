@@ -1,4 +1,5 @@
-import { Check, ChevronRight, Plus, TriangleAlert } from 'lucide-preact';
+import type { ComponentChildren } from 'preact';
+import { CalendarClock, ChartColumn, Clock, Flame, MapPin, Moon, Plus, RotateCcw, Shield, Star, Target } from 'lucide-preact';
 import { cardState, type CardState } from '../../domain/cards';
 import { weekStart } from '../../domain/dates';
 import { longLabel, relLabel } from '../../domain/format';
@@ -7,8 +8,7 @@ import { levelTitle } from '../../domain/levels';
 import { loadCheck } from '../../domain/load';
 import type { Session } from '../../domain/types';
 import { cfgEff, level, sessions, settings, today, xpTotal } from '../../data/store';
-import { KindIcon } from '../icons';
-import { Progress, Ring, Section } from '../kit';
+import { KindIcon, QUEST_ICONS, type IconC } from '../icons';
 import { SessionCard } from '../SessionCard';
 import { openSheet } from '../state';
 
@@ -29,62 +29,69 @@ export function Today() {
   const soon = pick('soon');
   const later = pick('upcoming').slice(0, 5);
   const nextRun = items.find((x) => x.s.kind === 'run' && ['today', 'soon', 'upcoming', 'overdue'].includes(x.st));
-  // Une seule action principale : la première séance du jour encore à faire.
-  const primaryId = todays.find((x) => x.st === 'today')?.s.id;
   const week = weekStart(t);
   const lc = loadCheck(all, cfg, week);
-  const card = (s: Session) => <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} primary={s.id === primaryId} />;
+  const card = (s: Session) => <SessionCard key={s.id} s={s} coach={s.id === nextRun?.s.id} />;
 
   return (
     <>
       <Header />
 
       {lc?.over && (
-        <p class="notice">
-          <TriangleAlert size={16} strokeWidth={1.75} />
-          <span>
-            {Math.round(lc.plannedMin)} min de course prévues cette semaine, pour un repère de {Math.round(lc.allowedMin)} min
-            (+10 % max). Raccourcis une sortie.
-          </span>
-        </p>
+        <div class="banner banner--warn">
+          <ChartColumn size={18} /> Cette semaine : {Math.round(lc.plannedMin)} min de course prévues, repère conseillé ≈{' '}
+          {Math.round(lc.allowedMin)} min (+10 % max). Pense à raccourcir une sortie.
+        </div>
       )}
 
       {overdue.length > 0 && (
-        <Section title="À rattraper">
-          <div class="list">{overdue.map(({ s }) => card(s))}</div>
+        <Section title="À rattraper" icon={RotateCcw}>
+          {overdue.map(({ s }) => card(s))}
         </Section>
       )}
 
-      <Section title="Au programme">
-        <div class="list">{todays.length ? todays.map(({ s }) => card(s)) : <p class="empty">Repos. Rien de prévu aujourd’hui.</p>}</div>
+      <Section title="Aujourd’hui" icon={MapPin}>
+        {todays.length ? (
+          todays.map(({ s }) => card(s))
+        ) : (
+          <div class="rest-card">
+            <span class="rest-card__icon">
+              <Moon size={26} />
+            </span>
+            <div>
+              <strong>Jour de repos</strong>
+              <p class="muted">La récup fait partie de l’entraînement.</p>
+            </div>
+          </div>
+        )}
       </Section>
 
       {soon.length > 0 && (
-        <Section title="Prochaines 48 h">
-          <div class="list">{soon.map(({ s }) => card(s))}</div>
+        <Section title="Dans les 48 h" icon={Clock}>
+          {soon.map(({ s }) => card(s))}
         </Section>
       )}
 
       <Quests week={week} />
 
       {later.length > 0 && (
-        <Section title="Plus tard">
-          <div class="list">
+        <Section title="Plus tard" icon={CalendarClock}>
+          <ul class="later">
             {later.map(({ s }) => (
-              <button key={s.id} class="row" onClick={() => openSheet({ type: 'session', id: s.id })}>
-                <span class="row__icon">
-                  <KindIcon kind={s.kind} size={18} />
-                </span>
-                <span class="row__main row__title">{s.title}</span>
-                <span class="row__aside">{relLabel(s.date, t)}</span>
-              </button>
+              <li key={s.id}>
+                <button class={`later__item later__item--${s.kind}`} onClick={() => openSheet({ type: 'session', id: s.id })}>
+                  <KindIcon kind={s.kind} size={20} />
+                  <span class="later__title">{s.title}</span>
+                  <span class="muted">{relLabel(s.date, t)}</span>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         </Section>
       )}
 
-      <button class="fab" aria-label="Nouvelle séance" onClick={() => openSheet({ type: 'edit' })}>
-        <Plus size={24} strokeWidth={2} />
+      <button class="fab" aria-label="Nouvelle carte" onClick={() => openSheet({ type: 'edit' })}>
+        <Plus size={30} strokeWidth={2.6} />
       </button>
     </>
   );
@@ -94,22 +101,36 @@ function Header() {
   const t = today.value;
   const lv = level.value;
   const st = streak(sessions.value, cfgEff.value, t);
-  const extra = [`${xpTotal.value} XP`, `série de ${st.current} sem.`];
-  if (st.jokersLeft > 0) extra.push(`${st.jokersLeft} joker${st.jokersLeft > 1 ? 's' : ''}`);
+  const deg = Math.round(lv.progress * 360);
   return (
-    <header class="page-head">
-      <p class="eyebrow">{longLabel(t)}</p>
-      <h1 class="title">Aujourd’hui</h1>
-      <button class="level" onClick={() => openSheet({ type: 'level' })} aria-label={`Niveau ${lv.level}, voir le détail`}>
-        <Ring value={lv.progress} size={22} />
-        <span>
-          <strong>
-            Niveau {lv.level} · {levelTitle(lv.level)}
-          </strong>
-          <br />
-          {extra.join(' · ')}
+    <header class="hero">
+      <div class="hero__text">
+        <p class="muted">{longLabel(t)}</p>
+        <h1 class="hero__title">{levelTitle(lv.level)}</h1>
+        <div class="hero__pills">
+          <span class="pill-stat pill-stat--fire">
+            <Flame size={16} /> {st.current} sem.
+          </span>
+          <span class="pill-stat pill-stat--xp">
+            <Star size={16} /> {xpTotal.value} XP
+          </span>
+          {st.jokersLeft > 0 && (
+            <span class="pill-stat">
+              <Shield size={16} /> {st.jokersLeft} joker{st.jokersLeft > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </div>
+      <button
+        class="ring ring--btn"
+        aria-label={`Niveau ${lv.level}, voir le détail`}
+        style={{ background: `conic-gradient(var(--xp) ${deg}deg, var(--surface-3) 0)` }}
+        onClick={() => openSheet({ type: 'level' })}
+      >
+        <span class="ring__inner">
+          <small>Niv.</small>
+          <strong>{lv.level}</strong>
         </span>
-        <ChevronRight size={16} strokeWidth={1.75} class="level__chev" />
       </button>
     </header>
   );
@@ -118,25 +139,39 @@ function Header() {
 function Quests({ week }: { week: string }) {
   const qs = weekQuests(sessions.value, settings.value, week);
   return (
-    <Section title="Cette semaine">
-      <div class="list">
-        {qs.map((q) => (
-          <div key={q.id} class={`quest ${q.done ? 'quest--done' : ''}`}>
-            <div class="quest__top">
-              <span class="quest__label">{q.label}</span>
-              {q.done ? (
-                <Check size={16} strokeWidth={2.25} class="quest__done" aria-label="Terminée" />
-              ) : (
-                <span class="quest__count">
-                  {q.progress}/{q.goal}
-                </span>
-              )}
-              <span class="quest__xp">+{q.xp}</span>
+    <Section title="Quêtes de la semaine" icon={Target}>
+      <div class="quests">
+        {qs.map((q) => {
+          const I = QUEST_ICONS[q.icon] ?? Target;
+          return (
+            <div key={q.id} class={`quest ${q.done ? 'quest--done' : ''}`}>
+              <span class="quest__icon" aria-hidden="true">
+                <I size={20} />
+              </span>
+              <div class="quest__body">
+                <div class="quest__label">
+                  <span>{q.label}</span>
+                  <span class="quest__xp">+{q.xp}</span>
+                </div>
+                <div class="bar">
+                  <div class="bar__fill" style={{ width: `${(q.progress / q.goal) * 100}%` }} />
+                </div>
+              </div>
             </div>
-            <Progress value={q.progress / q.goal} />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Section>
+  );
+}
+
+export function Section({ title, icon: I, children }: { title: string; icon: IconC; children: ComponentChildren }) {
+  return (
+    <section class="section">
+      <h2 class="section__title">
+        <I size={17} aria-hidden="true" /> {title}
+      </h2>
+      {children}
+    </section>
   );
 }

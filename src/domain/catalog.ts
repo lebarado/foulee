@@ -29,7 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
     maxRunMin: 60,
     runWalk: { runMin: 4, walkMin: 1 },
   },
-  theme: 'sapin',
+  theme: 'menthe',
   rewards: [
     { id: 'r3', level: 3, label: 'Une paire de chaussettes de running' },
     { id: 'r6', level: 6, label: 'Une sortie découverte au Mont Saint-Quentin' },
